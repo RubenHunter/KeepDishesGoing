@@ -13,6 +13,5 @@ public class Restaurant {
     private String type;
     private boolean isManuallyClosed;
 
-
     //setters
 }

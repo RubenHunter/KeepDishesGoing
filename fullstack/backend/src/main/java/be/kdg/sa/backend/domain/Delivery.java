@@ -9,10 +9,12 @@ import java.time.LocalDateTime;
 @ToString
 public class Delivery {
     private Long id;
-    //private Order.id orderId;
+    private Long orderId;
     private DeliveryStatus status;
     private LocalDateTime claimedAt;
     private LocalDateTime readyForPickupAt;
     private LocalDateTime deliveredAt; // kan null zijn als nog niet geleverd, updaten wanneer geleverd
     private Money deliveryFee;
+
+    //setter for deliveredAt
 }

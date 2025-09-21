@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @ToString
 public class Order {
     private Long id;
-    //private Restaurant.id restaurantId; moet ik nog uitzoeken (getters setters)
+    private Long restaurantId;
     private OrderStatus status;
     private LocalDateTime placedAt;
     private LocalDateTime acceptBy;
