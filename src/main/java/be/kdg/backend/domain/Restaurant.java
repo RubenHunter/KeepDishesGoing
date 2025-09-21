@@ -14,6 +14,14 @@ public class Restaurant {
     private List<MenuItem> menuItems;
     private boolean isActive;
 
+    public void setId(Long id) {
+        this.id=id;
+    }
+
+    public void setIsActive(boolean active) {
+        isActive = active;
+    }
+
     /*
     private String contactEmail;
     private String type;
