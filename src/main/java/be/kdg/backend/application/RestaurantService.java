@@ -2,12 +2,15 @@ package be.kdg.backend.application;
 
 import be.kdg.backend.domain.restaurant.IRestaurantRepository;
 import be.kdg.backend.domain.restaurant.Restaurant;
+import be.kdg.backend.domain.restaurant.RestaurantId;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.Optional;
 
 @Service
+@Transactional
 public class RestaurantService {
     private final IRestaurantRepository restaurantRepository;
 
@@ -23,7 +26,7 @@ public class RestaurantService {
         return restaurantRepository.insert(restaurant);
     }
 
-    public Optional<Restaurant> getRestaurantById(long id) {
+    public Optional<Restaurant> getRestaurantById(RestaurantId id) {
         return restaurantRepository.getById(id);
     }
 

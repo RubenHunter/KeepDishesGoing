@@ -3,6 +3,8 @@ package be.kdg.backend.api;
 import be.kdg.backend.api.dto.RestaurantDto;
 import be.kdg.backend.application.RestaurantService;
 import be.kdg.backend.domain.restaurant.Restaurant;
+import be.kdg.backend.domain.restaurant.RestaurantId;
+import be.kdg.backend.domain.restaurant.RestaurantStatus;
 import be.kdg.backend.infrastructure.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("api/restaurants")
@@ -29,18 +33,19 @@ public class RestaurantController {
     */
     @PostMapping({"", "/"})
     public ResponseEntity<RestaurantDto> createRestaurant(@Valid @RequestBody RestaurantDto dto) {
-        log.info("inserting {}",dto);
+        log.info("inserting {}", dto);
         Restaurant created = restaurantService.createRestaurant(dto.to());
         return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/" + created.getId()).build().toUri())
-            .body(RestaurantDto.from(created));
+                        .path("/" + created.getId().id()).build().toUri())
+                .body(RestaurantDto.from(created));
     }
+
     @GetMapping({"", "/"})
     public ResponseEntity<Iterable<RestaurantDto>> getAllRestaurants(@RequestParam(defaultValue = "") String name) {
         log.info("REST request to get all Restaurants");
         return ResponseEntity.ok(restaurantService.getAllRestaurants()
             .stream()
-            .filter(restaurant -> restaurant.getName().toLowerCase().contains(name))
+            .filter(restaurant -> restaurant.getName().name().toLowerCase().contains(name))
             .map(RestaurantDto::from)
             .toList());
     }
@@ -51,8 +56,9 @@ public class RestaurantController {
     get, public, resp: RestaurantDto
      */
     @GetMapping("/{id}")
-    public ResponseEntity<RestaurantDto> getRestaurantById(@PathVariable long id) {
-        return restaurantService.getRestaurantById(id)
+    public ResponseEntity<RestaurantDto> getRestaurantById(@PathVariable final UUID id) {
+        final RestaurantId restaurantId = new RestaurantId(id);
+        return restaurantService.getRestaurantById(restaurantId)
             .map(RestaurantDto::from)
             .map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.notFound().build());
@@ -63,14 +69,14 @@ public class RestaurantController {
     /restaurants/{id}/open
     patch, auth -> owner
      */
-    // src/main/java/be/kdg/backend/api/RestaurantController.java
     @PatchMapping("/{id}/open")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public ResponseEntity<Void> openRestaurant(@PathVariable long id) {
+    public ResponseEntity<Void> openRestaurant(@PathVariable final UUID id) {
         try {
-            Restaurant restaurant = restaurantService.getRestaurantById(id)
+            final RestaurantId restaurantId = new RestaurantId(id);
+            Restaurant restaurant = restaurantService.getRestaurantById(restaurantId)
                     .orElseThrow(() -> new ResourceNotFoundException("No restaurant found with id " + id));
-            restaurant.setIsActive(true);
+            restaurant.setStatus(RestaurantStatus.ACTIVE);
             restaurantService.updateRestaurant(restaurant);
             return ResponseEntity.noContent().build();
         } catch (EntityNotFoundException e) {
@@ -84,13 +90,14 @@ public class RestaurantController {
     /restaurants/{id}/close
     patch, auth -> owner
      */
-    @PatchMapping("/{id}close")
+    @PatchMapping("/{id}/close")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public ResponseEntity<Void> closeRestaurant(@PathVariable long id) {
+    public ResponseEntity<Void> closeRestaurant(@PathVariable final UUID id) {
         try {
-            Restaurant restaurant = restaurantService.getRestaurantById(id)
+            final RestaurantId restaurantId = new RestaurantId(id);
+            Restaurant restaurant = restaurantService.getRestaurantById(restaurantId)
                     .orElseThrow(() -> new ResourceNotFoundException("No restaurant found with id " + id));
-            restaurant.setIsActive(false);
+            restaurant.setStatus(RestaurantStatus.INACTIVE);
             restaurantService.updateRestaurant(restaurant);
             return ResponseEntity.noContent().build();
         } catch (EntityNotFoundException e) {

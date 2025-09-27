@@ -1,0 +1,21 @@
+@restaurantId = a6a52c73-9070-4128-a988-255383b941bc
+
+### Get all restaurants
+GET http://localhost:8080/api/restaurants
+
+### Get restaurant by ID
+GET http://localhost:8080/api/restaurants/{{restaurantId}}
+
+### Open restaurant
+PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/open
+
+### Close restaurant
+PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/close
+
+### Create a new restaurant
+POST http://localhost:8080/api/restaurants
+Content-Type: application/json
+
+{
+  "name": "Test Bistro"
+}

@@ -17,6 +17,7 @@ public class Restaurant {
     @Identity
     private final RestaurantId id;
     private final RestaurantName name;
+    @Setter
     private RestaurantStatus status;
     //private Address address;
     private List<Dish> dishes;

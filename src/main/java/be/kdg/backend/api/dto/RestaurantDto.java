@@ -5,15 +5,23 @@ import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.domain.restaurant.RestaurantId;
 import be.kdg.backend.domain.restaurant.RestaurantName;
 import be.kdg.backend.domain.restaurant.RestaurantStatus;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.math.BigDecimal;
 
 public record RestaurantDto(
         UUID id,
+        @NotBlank(message = "A Restaurant needs a name")
+        @Size(min = 2, max = 100, message = "Name must be between 2 and 100 characters")
         String name,
         String status,
+        @Valid
         List<DishDto> dishes
 ) {
     public static RestaurantDto from(Restaurant restaurant) {
@@ -24,12 +32,25 @@ public record RestaurantDto(
                 restaurant.getDishes().stream().map(DishDto::from).toList()
         );
     }
+    public Restaurant to () {
+        return new Restaurant(
+                //not sure about this yet, needs future testing
+                RestaurantId.create(),
+                new RestaurantName(this.name),
+                RestaurantStatus.ACTIVE, // or INACTIVE, depending on your logic
+                new ArrayList<>() // or pass dishes if available
+        );
+    }
 
-    public static record DishDto(
+
+    public record DishDto(
             UUID id,
+            @NotBlank(message = "A Dish needs a name")
+            @Size(min = 2, max = 100, message = "Dish name must be between 2 and 100 characters")
             String name,
+            @Size(max = 400, message = "Description cannot be longer than 400 characters")
             String description,
-            BigDecimal price,
+            @PositiveOrZero BigDecimal price,
             String category,
             String status
     ) {

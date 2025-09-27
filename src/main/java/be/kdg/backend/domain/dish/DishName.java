@@ -5,10 +5,10 @@ import org.jmolecules.ddd.annotation.ValueObject;
 @ValueObject
 public record DishName(String name) {
     public DishName{
-        validate();
+        validate(name);
     }
 
-    public void validate() {
+    public void validate(String name) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Dish name cannot be null or blank");
         }

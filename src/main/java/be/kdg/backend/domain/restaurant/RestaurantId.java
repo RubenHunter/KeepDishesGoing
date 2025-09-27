@@ -9,10 +9,10 @@ import java.util.UUID;
 @ValueObject
 public record RestaurantId(UUID id) {
     public RestaurantId{
-        validate();
+        validate(id);
     }
 
-    public void validate() {
+    public void validate(UUID id) {
         Assert.notNull(id,"Id cannot be null");
     }
 

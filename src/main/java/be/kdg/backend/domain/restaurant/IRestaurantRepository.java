@@ -6,7 +6,7 @@ import java.util.Optional;
 public interface IRestaurantRepository {
     Restaurant insert(Restaurant restaurant);
 
-    Optional<Restaurant> getById(long id);
+    Optional<Restaurant> getById(RestaurantId id);
 
     Collection<Restaurant> getAll();
 
