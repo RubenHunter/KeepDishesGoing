@@ -37,32 +37,8 @@ public record RestaurantDto(
                 //not sure about this yet, needs future testing
                 RestaurantId.create(),
                 new RestaurantName(this.name),
-                RestaurantStatus.ACTIVE, // or INACTIVE, depending on your logic
+                RestaurantStatus.ACTIVE,
                 new ArrayList<>() // or pass dishes if available
         );
-    }
-
-
-    public record DishDto(
-            UUID id,
-            @NotBlank(message = "A Dish needs a name")
-            @Size(min = 2, max = 100, message = "Dish name must be between 2 and 100 characters")
-            String name,
-            @Size(max = 400, message = "Description cannot be longer than 400 characters")
-            String description,
-            @PositiveOrZero BigDecimal price,
-            String category,
-            String status
-    ) {
-        public static DishDto from(Dish dish) {
-            return new DishDto(
-                    dish.getId().id(),
-                    dish.getName().name(),
-                    dish.getDescription().description(),
-                    dish.getPrice().amount(),
-                    dish.getCategory().name(),
-                    dish.getStatus().name()
-            );
-        }
     }
 }

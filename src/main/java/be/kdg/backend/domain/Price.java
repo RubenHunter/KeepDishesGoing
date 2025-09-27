@@ -7,11 +7,11 @@ import java.math.BigDecimal;
 @ValueObject
 public record Price(BigDecimal amount, String currency) {
     public Price {
-        validate();
+        validate(amount, currency);
     }
 
-    public void validate() {
-        if (amount == null || !isPositive()) {
+    public void validate(BigDecimal amount, String currency) {
+        if (amount == null || !isPositive(amount)) {
             throw new IllegalArgumentException("Amount cannot be null or negative");
         }
         if (currency == null || currency.isEmpty()) {
@@ -20,7 +20,7 @@ public record Price(BigDecimal amount, String currency) {
         // other validation here
     }
 
-    public boolean isPositive() {
+    public boolean isPositive(BigDecimal amount) {
         return amount.compareTo(BigDecimal.ZERO) > 0;
     }
 

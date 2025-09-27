@@ -13,9 +13,13 @@ public class Dish {
     @Identity
     private final DishId id;
     private final DishName name;
+    @Setter
     private Description description;
+    @Setter
     private Price price;
+    @Setter
     private DishCategory category;
+    @Setter
     private DishStatus status;
 
 
@@ -25,9 +29,12 @@ public class Dish {
         if (this.status == DishStatus.PUBLISHED) {
             throw new IllegalStateException("Dish is already published");
         }
+        /*
         if (this.status == DishStatus.OUT_OF_STOCK) {
             throw new IllegalStateException("Cannot publish dish that is out of stock");
         }
+
+         */
         validatePrice(this.price);
         this.status = DishStatus.PUBLISHED;
     }
@@ -44,13 +51,13 @@ public class Dish {
     }
 
     //isAvailable()
-    public boolean isAvailable() {
-        return this.status == DishStatus.PUBLISHED && this.price.isPositive();
+    public boolean isAvailable(Price price) {
+        return this.status == DishStatus.PUBLISHED && this.price.isPositive(price.amount());
     }
 
     //validatePrice(Price price)
     private void validatePrice(Price price) {
-        if (!price.isPositive()) {
+        if (!price.isPositive(price.amount())) {
             throw new IllegalArgumentException("Price must be positive");
         }
     }

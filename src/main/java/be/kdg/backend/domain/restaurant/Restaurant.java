@@ -48,6 +48,25 @@ public class Restaurant {
         dishes.add(draftDish);
         return newId;
     }
+    // src/main/java/be/kdg/backend/domain/restaurant/Restaurant.java
+    public void updateDraftDish(DishId dishId, String name, String description, Price price, DishCategory category) {
+        Dish dish = findDishById(dishId);
+        // Only update mutable fields
+        if (name != null && !name.isBlank()) {
+            // If DishName is not final, set it; otherwise, skip or recreate dish
+        }
+        if (description != null) {
+            dish.setDescription(new Description(description));
+        }
+        if (price != null) {
+            dish.updatePrice(price);
+        }
+        if (category != null) {
+            dish.setCategory(category);
+        }
+        dish.setStatus(DishStatus.DRAFT); // You may need to add this setter
+    }
+
 
     //publishDish(DishId dishId)
     public void publishDish(DishId dishId) {
@@ -80,9 +99,12 @@ public class Restaurant {
         if (dish.getStatus() == DishStatus.PUBLISHED) {
             throw new IllegalStateException("Dish is already published");
         }
+        /*
         if (dish.getStatus() == DishStatus.OUT_OF_STOCK) {
             throw new IllegalStateException("Cannot publish dish that is out of stock");
         }
+        */
+
     }
 
     // Helper method

@@ -1,0 +1,60 @@
+@restaurantId = e4c36def-6111-4c32-8adf-3c57dc6b7b7e
+
+@dishId = a5fcfc61-57fa-43ac-9176-5b36acf2bb78
+### Create a new dish
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/dishes
+Content-Type: application/json
+
+{
+  "name": "Lasagna",
+  "description": "Layered pasta with meat and cheese",
+  "price": {
+    "amount": 14.5,
+    "currency": "EUR"
+  },
+  "category": "MAIN_COURSE",
+  "status": "DRAFT"
+}
+
+### Get all dishes for a restaurant
+GET http://localhost:8080/api/restaurants/{{restaurantId}}/dishes
+
+### Get published menu for a restaurant
+GET http://localhost:8080/api/restaurants/{{restaurantId}}/menu
+
+
+### Update a dish
+PUT http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}
+Content-Type: application/json
+
+{
+  "name": "Lasagna Special",
+  "description": "Layered pasta with meat, cheese, and spinach",
+  "price": {
+    "amount": 15.0,
+    "currency": "EUR"
+  },
+  "category": "MAIN_COURSE"
+}
+
+### Publish a dish
+PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/publish
+
+### Set dish availability
+PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/availability
+Content-Type: application/json
+
+{
+  "available": true
+}
+
+### Publish all draft dishes
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/publish_menu
+
+### Schedule publish of all draft dishes
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/schedule_publish
+Content-Type: application/json
+
+{
+  "publishAt": "2024-07-01T12:00:00"
+}
