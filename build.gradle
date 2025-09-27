@@ -39,6 +39,9 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	implementation 'org.jmolecules.integrations:jmolecules-starter-ddd:0.29.0'
+	testImplementation 'org.jmolecules.integrations:jmolecules-starter-test:0.29.0'
+	implementation("org.jspecify:jspecify:1.0.0")
 }
 
 tasks.named('test') {

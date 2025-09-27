@@ -1,4 +1,4 @@
-package be.kdg.backend.domain;
+package be.kdg.backend.domain.restaurant;
 
 import java.util.Collection;
 import java.util.Optional;

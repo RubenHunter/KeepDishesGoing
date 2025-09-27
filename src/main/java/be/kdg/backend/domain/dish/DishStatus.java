@@ -1,4 +1,4 @@
-package be.kdg.backend.domain;
+package be.kdg.backend.domain.dish;
 
 public enum DishStatus {
     PUBLISHED,

@@ -1,20 +1,47 @@
 package be.kdg.backend.api.dto;
 
-import be.kdg.backend.domain.Address;
-import be.kdg.backend.domain.MenuItem;
-import be.kdg.backend.domain.Restaurant;
-import jakarta.validation.constraints.NotBlank;
+import be.kdg.backend.domain.dish.Dish;
+import be.kdg.backend.domain.restaurant.Restaurant;
+import be.kdg.backend.domain.restaurant.RestaurantId;
+import be.kdg.backend.domain.restaurant.RestaurantName;
+import be.kdg.backend.domain.restaurant.RestaurantStatus;
 
 import java.util.List;
+import java.util.UUID;
+import java.math.BigDecimal;
 
-public record RestaurantDto(Long id, @NotBlank(message="A Restaurant needs a name") String name, @NotBlank(message="A Restaurant needs an Address") Address addres, List<MenuItem> menuItems, boolean isActive) {
-
-    public static RestaurantDto from (Restaurant restaurant){
-        return new RestaurantDto(restaurant.getId(), restaurant.getName(), restaurant.getAddress(), restaurant.getMenuItems(), restaurant.isActive());
+public record RestaurantDto(
+        UUID id,
+        String name,
+        String status,
+        List<DishDto> dishes
+) {
+    public static RestaurantDto from(Restaurant restaurant) {
+        return new RestaurantDto(
+                restaurant.getId().id(),
+                restaurant.getName().name(),
+                restaurant.getStatus().name(),
+                restaurant.getDishes().stream().map(DishDto::from).toList()
+        );
     }
 
-    public Restaurant to (){
-        return new Restaurant(id, name, addres, menuItems, isActive);
+    public static record DishDto(
+            UUID id,
+            String name,
+            String description,
+            BigDecimal price,
+            String category,
+            String status
+    ) {
+        public static DishDto from(Dish dish) {
+            return new DishDto(
+                    dish.getId().id(),
+                    dish.getName().name(),
+                    dish.getDescription().description(),
+                    dish.getPrice().amount(),
+                    dish.getCategory().name(),
+                    dish.getStatus().name()
+            );
+        }
     }
-
 }

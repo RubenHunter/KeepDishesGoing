@@ -2,7 +2,7 @@ package be.kdg.backend.api;
 
 import be.kdg.backend.api.dto.RestaurantDto;
 import be.kdg.backend.application.RestaurantService;
-import be.kdg.backend.domain.Restaurant;
+import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.infrastructure.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;

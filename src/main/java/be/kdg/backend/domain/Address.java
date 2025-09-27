@@ -1,10 +1,12 @@
 package be.kdg.backend.domain;
 
 import lombok.*;
+import org.jmolecules.ddd.annotation.ValueObject;
 
 @Getter
 @AllArgsConstructor
 @ToString
+@ValueObject
 public class Address {
     private String street;
     private String houseNumber;

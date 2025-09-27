@@ -1,7 +1,7 @@
 package be.kdg.backend.infrastructure;
 
-import be.kdg.backend.domain.IRestaurantRepository;
-import be.kdg.backend.domain.Restaurant;
+import be.kdg.backend.domain.restaurant.IRestaurantRepository;
+import be.kdg.backend.domain.restaurant.Restaurant;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
