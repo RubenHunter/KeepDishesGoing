@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+/src/main/java/be/kdg/backend/infrastructure/idp_mysql_data/
+/src/main/java/be/kdg/backend/infrastructure/rabbitmq/
+/src/main/java/be/kdg/backend/infrastructure/postgresql/data/data/
