@@ -1,0 +1,81 @@
+package be.kdg.backend.infrastructure.jpa;
+
+import be.kdg.backend.domain.Price;
+import be.kdg.backend.domain.dish.*;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import jakarta.persistence.Entity;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+@Entity
+@Table(name = "dishes")
+public class JpaDishEntity {
+
+    @Id
+    private UUID id;
+
+    @Getter
+    @Setter
+    @ManyToOne
+    @JoinColumn(name = "restaurant_id", nullable = false)
+    private JpaRestaurantEntity restaurant;
+
+    @Column
+    private String name;
+
+    @Column
+    private String description;
+
+    //TODO: not sure yet how to do this, maybe 2 fields or just 1 string?
+    @Getter
+    @Column
+    private BigDecimal price;
+
+    @Enumerated(EnumType.STRING)
+    @Column
+    private DishCategory category;
+
+    @Enumerated(EnumType.STRING)
+    @Column
+    private DishStatus status;
+
+    protected JpaDishEntity() {
+    }
+
+    public JpaDishEntity(UUID id, String name, String description, BigDecimal price, DishCategory category, DishStatus status) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.price = price;
+        this.category = category;
+        this.status = status;
+    }
+
+    public static JpaDishEntity fromDomain(Dish dish, UUID restaurantId) {
+        return new JpaDishEntity(
+                dish.getId().id(),
+                dish.getName().name(),
+                dish.getDescription().description(),
+                dish.getPrice().amount(),
+                dish.getCategory(),
+                dish.getStatus()
+        );
+    }
+
+    public Dish toDomain() {
+        return new Dish(
+                new DishId(id),
+                new DishName(name),
+                new Description(description),
+                new Price(price, "EUR"), //TODO: currency
+                category,
+                status
+        );
+    }
+
+
+
+}

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Optional;
 
@@ -31,7 +32,15 @@ public class DishService {
         // Also add dish to the Restaurant aggregate
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
+        // Before
         restaurant.getDishes().add(createdDish);
+
+        // After
+        if (!(restaurant.getDishes() instanceof ArrayList)) {
+            restaurant.setDishes(new ArrayList<>(restaurant.getDishes()));
+        }
+        restaurant.getDishes().add(createdDish);
+
         restaurantRepository.update(restaurant);
 
         return createdDish;
@@ -69,6 +78,10 @@ public class DishService {
                 .filter(d -> d.getId().equals(dishId))
                 .findFirst()
                 .orElseThrow(dishId::notFound);
+
+        // After updating the dish in the restaurant to persist in database
+        dishRepository.insert(dish, restaurantId);
+
         return DishDto.from(dish);
     }
 
@@ -79,6 +92,15 @@ public class DishService {
         restaurant.publishDish(dishId);
 
         restaurantRepository.update(restaurant);
+
+        // After updating the dish status in the restaurant
+        Dish dish = restaurant.getDishes().stream()
+                .filter(d -> d.getId().equals(dishId))
+                .findFirst()
+                .orElseThrow(dishId::notFound);
+
+        dishRepository.insert(dish, restaurantId); // Persist the change
+
     }
 
     public void setDishAvailability(RestaurantId restaurantId, DishId dishId, boolean available) {
@@ -92,6 +114,15 @@ public class DishService {
         }
 
         restaurantRepository.update(restaurant);
+
+        // After updating the dish status in the restaurant
+        Dish dish = restaurant.getDishes().stream()
+                .filter(d -> d.getId().equals(dishId))
+                .findFirst()
+                .orElseThrow(dishId::notFound);
+
+        dishRepository.insert(dish, restaurantId); // Persist the change
+
     }
 
     public void publishAllDraftDishes(RestaurantId restaurantId) {
@@ -109,6 +140,12 @@ public class DishService {
                 });
 
         restaurantRepository.update(restaurant);
+        // After updating the dish status in the restaurant
+        restaurant.getDishes().stream()
+                .filter(dish -> dish.getStatus() == DishStatus.PUBLISHED)
+                .forEach(dish -> dishRepository.insert(dish, restaurantId));
+
+
     }
 
     public void schedulePublishAllDraftDishes(RestaurantId restaurantId, LocalDateTime publishAt) {

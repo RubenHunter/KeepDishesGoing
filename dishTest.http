@@ -1,6 +1,6 @@
-@restaurantId = e4c36def-6111-4c32-8adf-3c57dc6b7b7e
+@restaurantId = a6a52c73-9070-4128-a988-255383b941bc
 
-@dishId = a5fcfc61-57fa-43ac-9176-5b36acf2bb78
+@dishId = fead1a60-45a9-40a9-936f-1304c599d91b
 ### Create a new dish
 POST http://localhost:8080/api/restaurants/{{restaurantId}}/dishes
 Content-Type: application/json
@@ -31,7 +31,7 @@ Content-Type: application/json
   "name": "Lasagna Special",
   "description": "Layered pasta with meat, cheese, and spinach",
   "price": {
-    "amount": 15.0,
+    "amount": 20.0,
     "currency": "EUR"
   },
   "category": "MAIN_COURSE"
@@ -45,7 +45,7 @@ PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/a
 Content-Type: application/json
 
 {
-  "available": true
+  "available": false
 }
 
 ### Publish all draft dishes

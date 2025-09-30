@@ -20,6 +20,7 @@ public class Restaurant {
     @Setter
     private RestaurantStatus status;
     //private Address address;
+    @Setter
     private List<Dish> dishes;
 
     /*
@@ -48,7 +49,7 @@ public class Restaurant {
         dishes.add(draftDish);
         return newId;
     }
-    // src/main/java/be/kdg/backend/domain/restaurant/Restaurant.java
+
     public void updateDraftDish(DishId dishId, String name, String description, Price price, DishCategory category) {
         Dish dish = findDishById(dishId);
         // Only update mutable fields
