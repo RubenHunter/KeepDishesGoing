@@ -41,6 +41,10 @@ dependencies {
 	testImplementation("org.jmolecules.integrations:jmolecules-starter-test:0.29.0")
 	testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
 
+	testImplementation("org.testcontainers:postgresql:1.19.3")
+	testImplementation("org.testcontainers:junit-jupiter:1.19.3")
+	testRuntimeOnly("com.h2database:h2")
+
 	// Database
 	runtimeOnly("org.postgresql:postgresql")
 
@@ -50,6 +54,8 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.amqp:spring-rabbit-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+
 }
 
 tasks.withType<Test> {

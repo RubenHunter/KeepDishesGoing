@@ -6,9 +6,9 @@ import be.kdg.sa.backend.domain.ValueObjects.CustomerId;
 import be.kdg.sa.backend.domain.ValueObjects.OrderId;
 import be.kdg.sa.backend.domain.ValueObjects.RestaurantId;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -20,8 +20,8 @@ import java.util.List;
 @Entity
 @Table(name = "orders", schema = "ordering")
 @Getter
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class OrderJpaEntity {
     @Id
     private String id;
@@ -59,6 +59,19 @@ public class OrderJpaEntity {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItemJpaEntity> items = new ArrayList<>();
 
+    // Constructors voor test gemak
+    public OrderJpaEntity(String id, String customerId, String restaurantId, String deliveryAddress,
+                          String customerEmail, OrderStatus status, BigDecimal totalAmount, String currency) {
+        this.id = id;
+        this.customerId = customerId;
+        this.restaurantId = restaurantId;
+        this.deliveryAddress = deliveryAddress;
+        this.customerEmail = customerEmail;
+        this.status = status;
+        this.totalAmount = totalAmount;
+        this.currency = currency;
+    }
+
     public static OrderJpaEntity fromDomain(Order order) {
         OrderJpaEntity entity = new OrderJpaEntity();
         entity.id = order.getId().getValue();
@@ -72,17 +85,10 @@ public class OrderJpaEntity {
         entity.createDate = order.getCreateDate();
         entity.updateDate = order.getUpdateDate();
 
-        // Items worden apart toegevoegd via de OrderItemJpaEntity.fromDomain method
-        entity.items = new ArrayList<>();
-
         return entity;
     }
 
-    // Let op: Deze method is vereenvoudigd - je zou reflection nodig hebben
-    // om de interne staat van het domain object correct te herstellen
     public Order toDomain() {
-        // Dit is een vereenvoudigde versie
-        // In een echte implementatie zou je de items moeten toevoegen
         Order order = new Order(
                 OrderId.of(this.id),
                 CustomerId.of(this.customerId),

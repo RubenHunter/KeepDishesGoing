@@ -12,12 +12,12 @@ class ArchitectureTest {
 
     private final JavaClasses classes = new ClassFileImporter()
             .importPackages("be.kdg.sa.backend");
-
+//g
     @Test
     void testDddArchitecture() {
         JMoleculesDddRules.all().check(classes);
     }
-
+//g
     @Test
     void domainShouldNotDependOnOtherLayers() {
         ArchRule rule = classes()
@@ -31,7 +31,7 @@ class ArchitectureTest {
                 );
         rule.check(classes);
     }
-
+//ng
     @Test
     void applicationShouldNotDependOnWebOrInfrastructure() {
         ArchRule rule = classes()
