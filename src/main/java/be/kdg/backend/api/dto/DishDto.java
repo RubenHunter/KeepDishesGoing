@@ -10,7 +10,6 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record DishDto(
-        UUID id,
         @NotBlank(message = "A Dish needs a name")
         @Size(min = 2, max = 100, message = "Dish name must be between 2 and 100 characters")
         String name,
@@ -22,7 +21,6 @@ public record DishDto(
 ) {
     public static DishDto from(Dish dish) {
         return new DishDto(
-                dish.getId().id(),
                 dish.getName().name(),
                 dish.getDescription().description(),
                 dish.getPrice(),

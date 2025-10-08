@@ -19,7 +19,7 @@ public class JpaDishEntity {
 
     @Getter
     @Setter
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "restaurant_id", nullable = false)
     private JpaRestaurantEntity restaurant;
 
@@ -76,6 +76,15 @@ public class JpaDishEntity {
         );
     }
 
+    // Update mutable fields only
+    public void updateFromDomain(Dish d) {
+        this.description = d.getDescription() != null ? d.getDescription().description() : null;
+        this.price = d.getPrice() != null ? d.getPrice().amount() : null;
+        this.category = d.getCategory();
+        this.status = d.getStatus();
+        // name stays immutable by domain rule
+    }
 
+    public UUID getId() { return id; }
 
 }

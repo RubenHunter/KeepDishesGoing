@@ -17,10 +17,8 @@ public class Restaurant {
     @Identity
     private final RestaurantId id;
     private final RestaurantName name;
-    @Setter
     private RestaurantStatus status;
     //private Address address;
-    @Setter
     private List<Dish> dishes;
 
     /*
@@ -32,6 +30,21 @@ public class Restaurant {
         this.dishes = dishes;
     }
     */
+
+
+    public void open() {
+        if (this.status == RestaurantStatus.ACTIVE) {
+            throw new IllegalStateException("Restaurant is already open");
+        }
+        this.status = RestaurantStatus.ACTIVE;
+    }
+
+    public void close() {
+        if (this.status == RestaurantStatus.INACTIVE) {
+            throw new IllegalStateException("Restaurant is already closed");
+        }
+        this.status = RestaurantStatus.INACTIVE;
+    }
 
 
     //methodes:
@@ -50,22 +63,25 @@ public class Restaurant {
         return newId;
     }
 
+    // Update only mutable fields; keep name immutable
     public void updateDraftDish(DishId dishId, String name, String description, Price price, DishCategory category) {
         Dish dish = findDishById(dishId);
-        // Only update mutable fields
-        if (name != null && !name.isBlank()) {
-            // If DishName is not final, set it; otherwise, skip or recreate dish
-        }
+
+        // Name is immutable; ignore or validate if provided
+        // if (name != null && !name.isBlank() && !new DishName(name).equals(dish.getName())) {
+        //     throw new IllegalArgumentException("Renaming a dish is not supported");
+        // }
+
         if (description != null) {
-            dish.setDescription(new Description(description));
+            dish.updateDescription(new Description(description));
         }
         if (price != null) {
             dish.updatePrice(price);
         }
         if (category != null) {
-            dish.setCategory(category);
+            dish.updateCategory(category);
         }
-        dish.setStatus(DishStatus.DRAFT); // You may need to add this setter
+        dish.markAsDraft();
     }
 
 
@@ -115,4 +131,9 @@ public class Restaurant {
                 .findFirst()
                 .orElseThrow(() -> dishId.notFound());
     }
+
+    public Dish getDishById(DishId dishId) {
+        return findDishById(dishId);
+    }
+
 }

@@ -13,13 +13,9 @@ public class Dish {
     @Identity
     private final DishId id;
     private final DishName name;
-    @Setter
     private Description description;
-    @Setter
     private Price price;
-    @Setter
     private DishCategory category;
-    @Setter
     private DishStatus status;
 
 
@@ -43,11 +39,24 @@ public class Dish {
     public void markOutOfStock() {
         this.status = DishStatus.OUT_OF_STOCK;
     }
+    // Move back to draft
+    public void markAsDraft() {
+        this.status = DishStatus.DRAFT;
+    }
 
     //updatePrice(Price newPrice)
     public void updatePrice(Price newPrice) {
         validatePrice(newPrice);
         this.price = newPrice;
+    }
+
+    // Update description
+    public void updateDescription(Description newDescription) {
+        this.description = newDescription;
+    }
+    // Update category
+    public void updateCategory(DishCategory newCategory) {
+        this.category = newCategory;
     }
 
     //isAvailable()

@@ -1,5 +1,6 @@
 package be.kdg.backend.infrastructure;
 
+import be.kdg.backend.domain.dish.DishId;
 import be.kdg.backend.domain.restaurant.*;
 import be.kdg.backend.infrastructure.jpa.*;
 import org.springframework.context.annotation.Primary;
@@ -17,11 +18,21 @@ public class DbRestaurantRepository implements IRestaurantRepository {
         this.jpaRestaurantRepository = jpaRestaurantRepository;
     }
 
+    //AI gebruikt want begreep de error niet goed genoeg
     @Override
-    public Restaurant insert(Restaurant restaurant) {
+    public void save(Restaurant restaurant) {
+        final UUID id = restaurant.getId().id();
+
+        Optional<JpaRestaurantEntity> maybeManaged = jpaRestaurantRepository.findById(id);
+        if (maybeManaged.isPresent()) {
+            JpaRestaurantEntity managed = maybeManaged.get();
+            managed.applyFromDomain(restaurant);
+            // managed entity will be flushed at tx commit
+            return;
+        }
+
         JpaRestaurantEntity entity = JpaRestaurantEntity.fromDomain(restaurant);
-        JpaRestaurantEntity saved = jpaRestaurantRepository.save(entity);
-        return saved.toDomain();
+        jpaRestaurantRepository.save(entity);
     }
 
     @Override
@@ -31,7 +42,7 @@ public class DbRestaurantRepository implements IRestaurantRepository {
     }
 
     @Override
-    public Collection<Restaurant> getAll() {
+    public List<Restaurant> getAll() {
         return jpaRestaurantRepository.findAll()
                 .stream()
                 .map(JpaRestaurantEntity::toDomain)
@@ -39,8 +50,9 @@ public class DbRestaurantRepository implements IRestaurantRepository {
     }
 
     @Override
-    public void update(Restaurant restaurant) {
-        JpaRestaurantEntity entity = JpaRestaurantEntity.fromDomain(restaurant);
-        jpaRestaurantRepository.save(entity);
+    public Optional<Restaurant> findByDishId(DishId dishId) {
+        return jpaRestaurantRepository.findByDishes_Id(dishId.id())
+                .map(JpaRestaurantEntity::toDomain);
     }
+    
 }

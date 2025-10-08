@@ -4,6 +4,7 @@ import be.kdg.backend.api.dto.*;
 import be.kdg.backend.application.DishService;
 import be.kdg.backend.domain.dish.Dish;
 import be.kdg.backend.domain.dish.DishId;
+import be.kdg.backend.domain.dish.DishName;
 import be.kdg.backend.domain.restaurant.RestaurantId;
 import be.kdg.backend.infrastructure.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -33,26 +35,35 @@ public class DishController {
      get, owner, resp: List<DishDto>
     */
     @PostMapping("/restaurants/{id}/dishes")
-    public ResponseEntity<DishDto> createDish(@Valid @RequestBody DishDto dto, @PathVariable final UUID id) {
+    public ResponseEntity<Void> createDish(@Valid @RequestBody DishDto dto, @PathVariable final UUID id) {
         log.info("Creating a new dish {}", dto);
-
-        //TODO: still need to connect it to a restaurant
         final RestaurantId restaurantId = new RestaurantId(id);
-        Dish created = dishService.createDish(dto.to(), restaurantId);
-        return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/" + created.getId()).build().toUri())
-            .body(DishDto.from(created));
+
+        DishId createdId = dishService.createDraftDish(
+                restaurantId,
+                new DishName(dto.name()),
+                dto.price()
+        );
+
+        return ResponseEntity.created(
+                ServletUriComponentsBuilder.fromCurrentRequest()
+                        .path("/{dishId}")
+                        .buildAndExpand(createdId.id())
+                        .toUri()
+        ).build();
     }
 
+    // GET /restaurants/{id}/dishes -> service returns DTOs; optional name filter handled in service/DB
     @GetMapping("/restaurants/{id}/dishes")
-    public ResponseEntity<Iterable<DishDto>> getAllDishes(@RequestParam(defaultValue = "") String name, @PathVariable final UUID id) {
+    public ResponseEntity<List<DishDto>> getAllDishes(
+            @PathVariable final UUID id) {
         log.info("REST request to get all Dishes from restaurant with id {}", id);
         final RestaurantId restaurantId = new RestaurantId(id);
-        return ResponseEntity.ok(dishService.getAllDishesFromRestaurantById(restaurantId)
-            .stream()
-            .filter(dish -> dish.getName().name().toLowerCase().contains(name))
-            .map(DishDto::from)
-            .toList());
+        List<Dish> dishes = dishService.listDishesOfRestaurant(restaurantId);
+        List<DishDto> dishDtos = dishes.stream()
+                .map(DishDto::from)
+                .toList();
+        return ResponseEntity.ok(dishDtos);
     }
 
     /*
@@ -60,14 +71,15 @@ public class DishController {
      get, public, resp: List<DishDto>
     */
     @GetMapping("/restaurants/{id}/menu")
-    public ResponseEntity<Iterable<DishDto>> getMenu(@RequestParam(defaultValue = "") String name, @PathVariable final UUID id) {
+    public ResponseEntity<List<DishDto>> getMenu(
+            @PathVariable final UUID id) {
         log.info("REST request to get menu from restaurant with id {}", id);
         final RestaurantId restaurantId = new RestaurantId(id);
-        return ResponseEntity.ok(dishService.getMenuDishes(restaurantId)
-            .stream()
-            .filter(dish -> dish.getName().name().toLowerCase().contains(name))
-            .map(DishDto::from)
-            .toList());
+        List<Dish> dishes = dishService.getMenuDishes(restaurantId);
+        List<DishDto> dishDtos = dishes.stream()
+                .map(DishDto::from)
+                .toList();
+        return ResponseEntity.ok(dishDtos);
     }
 
     /*
@@ -77,9 +89,8 @@ public class DishController {
     @PutMapping("/restaurants/{restaurantId}/dishes/{dishId}")
     public ResponseEntity<DishDto> updateDish(@Valid @RequestBody UpdateDishDto dto, @PathVariable final UUID restaurantId, @PathVariable final UUID dishId) {
         log.info("Updating dish with id {} from restaurant with id {}: {}", dishId, restaurantId, dto);
-        DishDto updated = dishService.updateDish(new RestaurantId(restaurantId), new DishId(dishId), dto);
+        DishDto updated = dishService.updateDraftDish(new RestaurantId(restaurantId), new DishId(dishId), dto);
         return ResponseEntity.ok(updated);
-
     }
 
     /*
@@ -88,13 +99,10 @@ public class DishController {
     */
     @PatchMapping("/restaurants/{restaurantId}/dishes/{dishId}/publish")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void publishDish(@PathVariable final UUID restaurantId,@PathVariable final UUID dishId) {
+    public void publishDish(@PathVariable final UUID restaurantId, @PathVariable final UUID dishId) {
         log.info("Publishing dish with id {} from restaurant with id {}", dishId, restaurantId);
-        try {
-            dishService.publishDish(new RestaurantId(restaurantId),new DishId(dishId));
-        } catch (EntityNotFoundException e) {
-            throw new ResourceNotFoundException("No dish found with id " + dishId, e);
-        }
+        dishService.publishDish(new RestaurantId(restaurantId), new DishId(dishId));
+
     }
 
     /*
@@ -108,11 +116,9 @@ public class DishController {
             @PathVariable final UUID dishId,
             @RequestBody SetAvailabilityDto dto) {
         log.info("Setting availability of dish with id {} from restaurant with id {} to {}", dishId, restaurantId, dto.available());
-        try {
-            dishService.setDishAvailability(new RestaurantId(restaurantId), new DishId(dishId), dto.available());
-        } catch (EntityNotFoundException e) {
-            throw new ResourceNotFoundException("No dish found with id " + dishId, e);
-        }
+
+        dishService.setDishAvailability(new RestaurantId(restaurantId), new DishId(dishId), dto.available());
+
     }
 
 
@@ -128,12 +134,11 @@ public class DishController {
     }
 
 
-
     /*
     /restaurants/{id}/schedule_publish
     post, owner, req: SchedulePublishDto
      */
-// src/main/java/be/kdg/backend/api/DishController.java
+
     @PostMapping("/restaurants/{restaurantId}/schedule_publish")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void schedulePublish(
@@ -142,5 +147,7 @@ public class DishController {
         log.info("Scheduling publish of all draft dishes for restaurant {} at {}", restaurantId, dto.publishAt());
         dishService.schedulePublishAllDraftDishes(new RestaurantId(restaurantId), dto.publishAt());
     }
+
+
 
 }

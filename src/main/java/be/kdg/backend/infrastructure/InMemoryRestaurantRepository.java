@@ -1,59 +1,103 @@
 package be.kdg.backend.infrastructure;
 
-import be.kdg.backend.domain.restaurant.*;
-import be.kdg.backend.domain.dish.*;
+import be.kdg.backend.domain.Price;
+import be.kdg.backend.domain.dish.Description;
+import be.kdg.backend.domain.dish.Dish;
+import be.kdg.backend.domain.dish.DishCategory;
+import be.kdg.backend.domain.dish.DishId;
+import be.kdg.backend.domain.dish.DishName;
+import be.kdg.backend.domain.dish.DishStatus;
+import be.kdg.backend.domain.restaurant.IRestaurantRepository;
+import be.kdg.backend.domain.restaurant.Restaurant;
+import be.kdg.backend.domain.restaurant.RestaurantId;
+import be.kdg.backend.domain.restaurant.RestaurantName;
+import be.kdg.backend.domain.restaurant.RestaurantStatus;
 import org.springframework.stereotype.Repository;
 
-import java.util.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
 public class InMemoryRestaurantRepository implements IRestaurantRepository {
-    private final Map<RestaurantId, Restaurant> data = new HashMap<>();
+    private final Map<RestaurantId, Restaurant> data = new ConcurrentHashMap<>();
 
     public InMemoryRestaurantRepository() {
-        RestaurantId id1 = RestaurantId.create();
-        RestaurantId id2 = RestaurantId.create();
-        RestaurantId id3 = RestaurantId.create();
-        RestaurantId id4 = RestaurantId.create();
-        RestaurantId id5 = RestaurantId.create();
-
-        data.put(id1, new Restaurant(
-                id1,
+        // Seed restaurants
+        Restaurant r1 = new Restaurant(
+                RestaurantId.create(),
                 new RestaurantName("Pizza Palace"),
                 RestaurantStatus.ACTIVE,
                 new ArrayList<>()
-        ));
-        data.put(id2, new Restaurant(
-                id2,
+        );
+        Restaurant r2 = new Restaurant(
+                RestaurantId.create(),
                 new RestaurantName("Sushi World"),
                 RestaurantStatus.INACTIVE,
                 new ArrayList<>()
-        ));
-        data.put(id3, new Restaurant(
-                id3,
+        );
+        Restaurant r3 = new Restaurant(
+                RestaurantId.create(),
                 new RestaurantName("Burger Barn"),
                 RestaurantStatus.ACTIVE,
                 new ArrayList<>()
-        ));
-        data.put(id4, new Restaurant(
-                id4,
+        );
+        Restaurant r4 = new Restaurant(
+                RestaurantId.create(),
                 new RestaurantName("Taco Town"),
                 RestaurantStatus.ACTIVE,
                 new ArrayList<>()
-        ));
-        data.put(id5, new Restaurant(
-                id5,
+        );
+        Restaurant r5 = new Restaurant(
+                RestaurantId.create(),
                 new RestaurantName("Curry Corner"),
                 RestaurantStatus.INACTIVE,
                 new ArrayList<>()
-        ));
+        );
+
+        data.put(r1.getId(), r1);
+        data.put(r2.getId(), r2);
+        data.put(r3.getId(), r3);
+        data.put(r4.getId(), r4);
+        data.put(r5.getId(), r5);
+
+        // Seed dishes (merged from old InMemoryDishRepository)
+        Dish d1 = new Dish(
+                DishId.create(),
+                new DishName("Margherita Pizza"),
+                new Description("Classic pizza with tomato and mozzarella"),
+                new Price(BigDecimal.valueOf(10), "EUR"),
+                DishCategory.MAIN_COURSE,
+                DishStatus.PUBLISHED
+        );
+        Dish d2 = new Dish(
+                DishId.create(),
+                new DishName("Sushi Roll"),
+                new Description("Fresh salmon roll"),
+                new Price(BigDecimal.valueOf(12), "EUR"),
+                DishCategory.MAIN_COURSE,
+                DishStatus.DRAFT
+        );
+        Dish d3 = new Dish(
+                DishId.create(),
+                new DishName("Tiramisu"),
+                new Description("Italian dessert"),
+                new Price(BigDecimal.valueOf(6), "EUR"),
+                DishCategory.DESSERT,
+                DishStatus.OUT_OF_STOCK
+        );
+
+        r1.getDishes().add(d1);
+        r1.getDishes().add(d3);
+        r2.getDishes().add(d2);
     }
 
-
     @Override
-    public Restaurant insert(Restaurant restaurant) {
+    public void save(Restaurant restaurant) {
         data.put(restaurant.getId(), restaurant);
-        return restaurant;
     }
 
     @Override
@@ -62,12 +106,14 @@ public class InMemoryRestaurantRepository implements IRestaurantRepository {
     }
 
     @Override
-    public Collection<Restaurant> getAll() {
-        return data.values();
+    public List<Restaurant> getAll() {
+        return new ArrayList<>(data.values());
     }
 
     @Override
-    public void update(Restaurant restaurant) {
-        data.put(restaurant.getId(), restaurant);
+    public Optional<Restaurant> findByDishId(DishId dishId) {
+        return data.values().stream()
+                .filter(r -> r.getDishes().stream().anyMatch(d -> d.getId().equals(dishId)))
+                .findFirst();
     }
 }

@@ -2,6 +2,7 @@ package be.kdg.backend.application;
 
 import be.kdg.backend.api.dto.DishDto;
 import be.kdg.backend.api.dto.UpdateDishDto;
+import be.kdg.backend.domain.Price;
 import be.kdg.backend.domain.dish.*;
 import be.kdg.backend.domain.restaurant.IRestaurantRepository;
 import be.kdg.backend.domain.restaurant.Restaurant;
@@ -12,56 +13,52 @@ import java.time.LocalDateTime;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Service
 @Transactional
 public class DishService {
-    private final IDishRepository dishRepository;
+
     private final IRestaurantRepository restaurantRepository;
 
-    public DishService(IDishRepository dishRepository, IRestaurantRepository restaurantRepository) {
-        this.dishRepository = dishRepository;
+    public DishService(IRestaurantRepository restaurantRepository) {
         this.restaurantRepository = restaurantRepository;
     }
 
-    public Dish createDish(Dish dish, RestaurantId restaurantId) {
-        // Insert dish into repository
-        Dish createdDish = dishRepository.insert(dish, restaurantId);
 
-        // Also add dish to the Restaurant aggregate
+    // Create a draft dish inside the Restaurant aggregate
+    public DishId createDraftDish(RestaurantId restaurantId, DishName name, Price price) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
-        // Before
-        restaurant.getDishes().add(createdDish);
 
-        // After
-        if (!(restaurant.getDishes() instanceof ArrayList)) {
-            restaurant.setDishes(new ArrayList<>(restaurant.getDishes()));
-        }
-        restaurant.getDishes().add(createdDish);
-
-        restaurantRepository.update(restaurant);
-
-        return createdDish;
+        DishId newDishId = restaurant.createDraftDish(name, price);
+        restaurantRepository.save(restaurant);
+        return newDishId;
     }
 
-    public Optional<Dish> getDishById(DishId id){
-        return dishRepository.getById(id);
+    // Find a dish by its id (via the Restaurant aggregate)
+    public Dish getDishById(DishId dishId) {
+        Restaurant restaurant = restaurantRepository.findByDishId(dishId)
+                .orElseThrow(dishId::notFound);
+        return restaurant.getDishById(dishId);
     }
 
-    public Collection<Dish> getAllDishesFromRestaurantById(RestaurantId id){
-        return dishRepository.getAllDishesFromRestaurant(id);
+    // List all dishes of a restaurant (never bypass the aggregate root)
+    public List<Dish> listDishesOfRestaurant(RestaurantId restaurantId) {
+        Restaurant restaurant = restaurantRepository.getById(restaurantId)
+                .orElseThrow(restaurantId::notFound);
+        return restaurant.getDishes();
     }
 
-    public Collection<Dish> getMenuDishes(RestaurantId id){
+    public List<Dish> getMenuDishes(RestaurantId id){
         Restaurant restaurant = restaurantRepository.getById(id)
                 .orElseThrow(id::notFound);
         return restaurant.getPublishedMenu();
     }
 
-    //sinds we restaurants updaten (de aggregate root) moeten we niet de dish repository updaten
-    public DishDto updateDish(RestaurantId restaurantId, DishId dishId, UpdateDishDto dto) {
+    // Update a draft dish through the aggregate behavior
+    public DishDto updateDraftDish(RestaurantId restaurantId, DishId dishId, UpdateDishDto dto) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
 
@@ -73,36 +70,22 @@ public class DishService {
                 dto.category()
         );
 
-        restaurantRepository.update(restaurant);
-        Dish dish = restaurant.getDishes().stream()
-                .filter(d -> d.getId().equals(dishId))
-                .findFirst()
-                .orElseThrow(dishId::notFound);
+        restaurantRepository.save(restaurant);
 
-        // After updating the dish in the restaurant to persist in database
-        dishRepository.insert(dish, restaurantId);
-
-        return DishDto.from(dish);
+        Dish updated = restaurant.getDishById(dishId);
+        return DishDto.from(updated);
     }
 
+    // Publish a dish through the aggregate behavior
     public void publishDish(RestaurantId restaurantId, DishId dishId) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
 
         restaurant.publishDish(dishId);
-
-        restaurantRepository.update(restaurant);
-
-        // After updating the dish status in the restaurant
-        Dish dish = restaurant.getDishes().stream()
-                .filter(d -> d.getId().equals(dishId))
-                .findFirst()
-                .orElseThrow(dishId::notFound);
-
-        dishRepository.insert(dish, restaurantId); // Persist the change
-
+        restaurantRepository.save(restaurant);
     }
 
+    // Set availability by publishing or marking out of stock
     public void setDishAvailability(RestaurantId restaurantId, DishId dishId, boolean available) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
@@ -113,39 +96,23 @@ public class DishService {
             restaurant.markDishOutOfStock(dishId);
         }
 
-        restaurantRepository.update(restaurant);
-
-        // After updating the dish status in the restaurant
-        Dish dish = restaurant.getDishes().stream()
-                .filter(d -> d.getId().equals(dishId))
-                .findFirst()
-                .orElseThrow(dishId::notFound);
-
-        dishRepository.insert(dish, restaurantId); // Persist the change
-
+        restaurantRepository.save(restaurant);
     }
 
+    // Publish all DRAFT dishes (no try/catch; validations live in the domain)
     public void publishAllDraftDishes(RestaurantId restaurantId) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
 
-        restaurant.getDishes().stream()
-                .filter(dish -> dish.getStatus() == DishStatus.DRAFT)
-                .forEach(dish -> {
-                    try {
-                        restaurant.publishDish(dish.getId());
-                    } catch (IllegalStateException ignored) {
-                        // Optionally log or handle already published/out of stock
-                    }
-                });
+        List<Dish> drafts = restaurant.getDishes().stream()
+                .filter(d -> d.getStatus() == DishStatus.DRAFT)
+                .toList();
 
-        restaurantRepository.update(restaurant);
-        // After updating the dish status in the restaurant
-        restaurant.getDishes().stream()
-                .filter(dish -> dish.getStatus() == DishStatus.PUBLISHED)
-                .forEach(dish -> dishRepository.insert(dish, restaurantId));
+        for (Dish d : drafts) {
+            restaurant.publishDish(d.getId());
+        }
 
-
+        restaurantRepository.save(restaurant);
     }
 
     public void schedulePublishAllDraftDishes(RestaurantId restaurantId, LocalDateTime publishAt) {

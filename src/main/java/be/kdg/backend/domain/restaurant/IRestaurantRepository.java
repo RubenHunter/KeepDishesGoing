@@ -1,17 +1,16 @@
 package be.kdg.backend.domain.restaurant;
 
-import java.util.Collection;
+import be.kdg.backend.domain.dish.DishId;
+
+import java.util.List;
 import java.util.Optional;
 
 public interface IRestaurantRepository {
-    Restaurant insert(Restaurant restaurant);
+    void save(Restaurant restaurant);
 
     Optional<Restaurant> getById(RestaurantId id);
 
-    Collection<Restaurant> getAll();
+    List<Restaurant> getAll();
 
-    void update(Restaurant restaurant);
-
-
-
+    Optional<Restaurant> findByDishId(DishId dishId);
 }

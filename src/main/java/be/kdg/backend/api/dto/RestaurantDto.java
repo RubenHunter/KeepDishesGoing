@@ -16,7 +16,6 @@ import java.util.UUID;
 import java.math.BigDecimal;
 
 public record RestaurantDto(
-        UUID id,
         @NotBlank(message = "A Restaurant needs a name")
         @Size(min = 2, max = 100, message = "Name must be between 2 and 100 characters")
         String name,
@@ -26,7 +25,6 @@ public record RestaurantDto(
 ) {
     public static RestaurantDto from(Restaurant restaurant) {
         return new RestaurantDto(
-                restaurant.getId().id(),
                 restaurant.getName().name(),
                 restaurant.getStatus().name(),
                 restaurant.getDishes().stream().map(DishDto::from).toList()

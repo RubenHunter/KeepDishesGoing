@@ -9,9 +9,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "restaurants")
@@ -30,7 +30,7 @@ public class JpaRestaurantEntity {
 
     @Getter
     @Setter
-    @OneToMany(mappedBy = "restaurant", fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<JpaDishEntity> dishes = new ArrayList<>();
 
     protected JpaRestaurantEntity() {
@@ -42,11 +42,13 @@ public class JpaRestaurantEntity {
         this.status = status;
     }
 
+    /*
     public static JpaRestaurantEntity fromDomain(Restaurant restaurant){
         JpaRestaurantEntity jpaRestaurantEntity = new JpaRestaurantEntity(
                 restaurant.getId().id(),
                 restaurant.getName().name(),
                 restaurant.getStatus()
+
         );
 
         List<JpaDishEntity> jpaDishEntities = restaurant.getDishes().stream()
@@ -56,20 +58,66 @@ public class JpaRestaurantEntity {
         jpaRestaurantEntity.dishes.addAll(jpaDishEntities);
 
         return jpaRestaurantEntity;
+    }*/
+    public static JpaRestaurantEntity fromDomain(Restaurant r) {
+        JpaRestaurantEntity e = new JpaRestaurantEntity();
+        e.id = r.getId().id();
+        e.name = r.getName().toString();
+        e.status = r.getStatus();
+        for (Dish d : r.getDishes()) {
+            JpaDishEntity child = JpaDishEntity.fromDomain(d, e);
+            e.addDish(child);
+        }
+        return e;
     }
 
     public Restaurant toDomain() {
-        List<Dish> domainDishes = dishes.stream()
-                .map(JpaDishEntity::toDomain)
-                .toList();
-
         return new Restaurant(
                 new RestaurantId(id),
                 new RestaurantName(name),
                 status,
-                new ArrayList<>(domainDishes)
+                dishes.stream().map(JpaDishEntity::toDomain).toList()
         );
     }
+
+    public void applyFromDomain(Restaurant r) {
+        this.name = r.getName().toString();
+        this.status = r.getStatus();
+
+        Map<UUID, JpaDishEntity> current = this.dishes.stream()
+                .collect(Collectors.toMap(JpaDishEntity::getId, Function.identity()));
+
+        // Upsert children
+        for (Dish d : r.getDishes()) {
+            UUID did = d.getId().id();
+            JpaDishEntity existing = current.get(did);
+            if (existing != null) {
+                existing.updateFromDomain(d);
+            } else {
+                JpaDishEntity created = JpaDishEntity.fromDomain(d, this);
+                this.addDish(created); // ensures FK restaurant_id is set
+            }
+        }
+
+        // Remove orphans
+        Set<UUID> domainIds = r.getDishes().stream().map(dd -> dd.getId().id()).collect(Collectors.toSet());
+        this.dishes.removeIf(j -> !domainIds.contains(j.getId()));
+    }
+
+    // Relationship helpers
+    public void addDish(JpaDishEntity dish) {
+        dish.setRestaurant(this);
+        this.dishes.add(dish);
+    }
+
+    public void removeDish(JpaDishEntity dish) {
+        this.dishes.remove(dish);
+        dish.setRestaurant(null);
+    }
+
+    // getters
+    public UUID getId() { return id; }
+    public List<JpaDishEntity> getDishes() { return dishes; }
 
 
 }

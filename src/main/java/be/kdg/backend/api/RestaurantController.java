@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -32,22 +34,26 @@ public class RestaurantController {
     get, public, resp: List<RestaurantDto>
     */
     @PostMapping({"", "/"})
-    public ResponseEntity<RestaurantDto> createRestaurant(@Valid @RequestBody RestaurantDto dto) {
-        log.info("inserting {}", dto);
-        Restaurant created = restaurantService.createRestaurant(dto.to());
-        return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest()
-                        .path("/" + created.getId().id()).build().toUri())
-                .body(RestaurantDto.from(created));
+    public ResponseEntity<Void> createRestaurant(@RequestBody RestaurantDto dto) {
+        // Domain generates the id; service does mapping + save
+        RestaurantId createdId = restaurantService.createRestaurant(dto);
+
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(createdId.id())
+                .toUri();
+
+        return ResponseEntity.created(location).build();
     }
 
     @GetMapping({"", "/"})
     public ResponseEntity<Iterable<RestaurantDto>> getAllRestaurants(@RequestParam(defaultValue = "") String name) {
         log.info("REST request to get all Restaurants");
-        return ResponseEntity.ok(restaurantService.getAllRestaurants()
-            .stream()
-            .filter(restaurant -> restaurant.getName().name().toLowerCase().contains(name))
-            .map(RestaurantDto::from)
-            .toList());
+        List<Restaurant> allRestaurants = restaurantService.listRestaurants();
+        List<RestaurantDto> restaurantDtos = allRestaurants.stream()
+                .map(RestaurantDto::from)
+                .toList();
+        return ResponseEntity.ok(restaurantDtos);
     }
 
 
@@ -58,10 +64,8 @@ public class RestaurantController {
     @GetMapping("/{id}")
     public ResponseEntity<RestaurantDto> getRestaurantById(@PathVariable final UUID id) {
         final RestaurantId restaurantId = new RestaurantId(id);
-        return restaurantService.getRestaurantById(restaurantId)
-            .map(RestaurantDto::from)
-            .map(ResponseEntity::ok)
-            .orElseGet(() -> ResponseEntity.notFound().build());
+        final Restaurant restaurant = restaurantService.getRestaurantById(restaurantId);
+        return ResponseEntity.ok(RestaurantDto.from(restaurant));
     }
 
 
@@ -72,18 +76,10 @@ public class RestaurantController {
     @PatchMapping("/{id}/open")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> openRestaurant(@PathVariable final UUID id) {
-        try {
-            final RestaurantId restaurantId = new RestaurantId(id);
-            Restaurant restaurant = restaurantService.getRestaurantById(restaurantId)
-                    .orElseThrow(() -> new ResourceNotFoundException("No restaurant found with id " + id));
-            restaurant.setStatus(RestaurantStatus.ACTIVE);
-            restaurantService.updateRestaurant(restaurant);
-            return ResponseEntity.noContent().build();
-        } catch (EntityNotFoundException e) {
-            throw new ResourceNotFoundException("No restaurant found with id " + id, e);
-        }
+        final RestaurantId restaurantId = new RestaurantId(id);
+        restaurantService.openRestaurant(restaurantId);
+        return ResponseEntity.noContent().build();
     }
-
 
 
     /*
@@ -93,16 +89,10 @@ public class RestaurantController {
     @PatchMapping("/{id}/close")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> closeRestaurant(@PathVariable final UUID id) {
-        try {
-            final RestaurantId restaurantId = new RestaurantId(id);
-            Restaurant restaurant = restaurantService.getRestaurantById(restaurantId)
-                    .orElseThrow(() -> new ResourceNotFoundException("No restaurant found with id " + id));
-            restaurant.setStatus(RestaurantStatus.INACTIVE);
-            restaurantService.updateRestaurant(restaurant);
-            return ResponseEntity.noContent().build();
-        } catch (EntityNotFoundException e) {
-            throw new ResourceNotFoundException("No restaurant found with id " + id, e);
-        }
+        final RestaurantId restaurantId = new RestaurantId(id);
+        restaurantService.closeRestaurant(restaurantId);
+        return ResponseEntity.noContent().build();
+
     }
 
 }
