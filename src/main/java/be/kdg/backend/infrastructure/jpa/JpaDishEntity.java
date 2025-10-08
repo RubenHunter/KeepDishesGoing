@@ -54,15 +54,16 @@ public class JpaDishEntity {
         this.status = status;
     }
 
-    public static JpaDishEntity fromDomain(Dish dish, UUID restaurantId) {
-        return new JpaDishEntity(
-                dish.getId().id(),
-                dish.getName().name(),
-                dish.getDescription().description(),
-                dish.getPrice().amount(),
-                dish.getCategory(),
-                dish.getStatus()
-        );
+    public static JpaDishEntity fromDomain(Dish d, JpaRestaurantEntity restaurant) {
+        JpaDishEntity e = new JpaDishEntity();
+        e.id = d.getId().id();
+        e.name = d.getName().name();
+        e.description = d.getDescription() == null ? null : d.getDescription().description();
+        e.price = d.getPrice().amount(); // currency not persisted in this table
+        e.category = d.getCategory();
+        e.status = d.getStatus();
+        e.setRestaurant(restaurant);
+        return e;
     }
 
     public Dish toDomain() {
@@ -86,5 +87,6 @@ public class JpaDishEntity {
     }
 
     public UUID getId() { return id; }
+    public void setRestaurant(JpaRestaurantEntity restaurant) { this.restaurant = restaurant; }
 
 }

@@ -49,14 +49,14 @@ public class Restaurant {
 
     //methodes:
     //createDraftDish(DishName dish, Price price) : DishId  -> business rule: Dish starts as DRAFT (DishStatus), must be explicitly published to be visible on menu
-    public DishId createDraftDish(DishName name, Price price) {
+    public DishId createDraftDish(DishName name, Description description, DishCategory category, Price price) {
         DishId newId = DishId.create();
         Dish draftDish = new Dish(
                 newId,
                 name,
-                new Description(""), // or require description as param
+                description != null ? description : new Description(""),
                 price,
-                DishCategory.MAIN_COURSE, // or require category as param
+                category != null ? category : DishCategory.MAIN_COURSE,
                 DishStatus.DRAFT
         );
         dishes.add(draftDish);

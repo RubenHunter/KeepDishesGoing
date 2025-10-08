@@ -28,13 +28,18 @@ public class DishService {
 
 
     // Create a draft dish inside the Restaurant aggregate
-    public DishId createDraftDish(RestaurantId restaurantId, DishName name, Price price) {
+    public DishId createDraftDish(RestaurantId restaurantId,
+                                  DishName name,
+                                  Description description,
+                                  Price price,
+                                  DishCategory category) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
 
-        DishId newDishId = restaurant.createDraftDish(name, price);
+        // pass arguments in the order expected by the domain method
+        DishId id = restaurant.createDraftDish(name, description, category, price);
         restaurantRepository.save(restaurant);
-        return newDishId;
+        return id;
     }
 
     // Find a dish by its id (via the Restaurant aggregate)

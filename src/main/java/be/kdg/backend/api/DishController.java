@@ -2,9 +2,7 @@ package be.kdg.backend.api;
 
 import be.kdg.backend.api.dto.*;
 import be.kdg.backend.application.DishService;
-import be.kdg.backend.domain.dish.Dish;
-import be.kdg.backend.domain.dish.DishId;
-import be.kdg.backend.domain.dish.DishName;
+import be.kdg.backend.domain.dish.*;
 import be.kdg.backend.domain.restaurant.RestaurantId;
 import be.kdg.backend.infrastructure.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -15,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @RestController
@@ -39,10 +38,17 @@ public class DishController {
         log.info("Creating a new dish {}", dto);
         final RestaurantId restaurantId = new RestaurantId(id);
 
+        DishCategory categoryEnum = (dto.category() == null || dto.category().isBlank())
+                ? null
+                : DishCategory.valueOf(dto.category().toUpperCase(Locale.ROOT));
+
+
         DishId createdId = dishService.createDraftDish(
                 restaurantId,
                 new DishName(dto.name()),
-                dto.price()
+                new Description(dto.description()),
+                dto.price(),
+                categoryEnum
         );
 
         return ResponseEntity.created(

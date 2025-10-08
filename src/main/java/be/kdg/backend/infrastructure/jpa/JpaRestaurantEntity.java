@@ -62,7 +62,7 @@ public class JpaRestaurantEntity {
     public static JpaRestaurantEntity fromDomain(Restaurant r) {
         JpaRestaurantEntity e = new JpaRestaurantEntity();
         e.id = r.getId().id();
-        e.name = r.getName().toString();
+        e.name = r.getName().name();
         e.status = r.getStatus();
         for (Dish d : r.getDishes()) {
             JpaDishEntity child = JpaDishEntity.fromDomain(d, e);
@@ -72,11 +72,17 @@ public class JpaRestaurantEntity {
     }
 
     public Restaurant toDomain() {
+        List<Dish> domainDishes = this.dishes == null
+                ? new ArrayList<>()
+                : this.dishes.stream()
+                .map(JpaDishEntity::toDomain)
+                .collect(Collectors.toCollection(ArrayList::new)); // mutable
+
         return new Restaurant(
-                new RestaurantId(id),
-                new RestaurantName(name),
-                status,
-                dishes.stream().map(JpaDishEntity::toDomain).toList()
+                new RestaurantId(this.id),
+                new RestaurantName(this.name),
+                this.status,
+                domainDishes
         );
     }
 
