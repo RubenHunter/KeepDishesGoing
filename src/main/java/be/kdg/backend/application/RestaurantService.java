@@ -28,12 +28,7 @@ public class RestaurantService {
 
     // Service does not depend on DTOs
     public RestaurantId createRestaurant(final String name) {
-        Restaurant restaurant = new Restaurant(
-                RestaurantId.create(),
-                new RestaurantName(name),
-                RestaurantStatus.INACTIVE,
-                new ArrayList<>()
-        );
+        Restaurant restaurant = Restaurant.create(name);
         //static create method domein regels in Restaurant domain
         restaurantRepository.save(restaurant);
         return restaurant.getId();

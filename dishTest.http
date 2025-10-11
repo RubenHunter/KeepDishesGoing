@@ -1,6 +1,6 @@
 @restaurantId = a6a52c73-9070-4128-a988-255383b941bc
 
-@dishId = 103a128b-1021-4ce6-ba28-fd18e0981267
+@dishId = a3354a31-936c-455f-a827-cfad69d6289f
 ### Create a new dish
 POST http://localhost:8080/api/restaurants/{{restaurantId}}/dishes
 Content-Type: application/json
@@ -12,8 +12,7 @@ Content-Type: application/json
     "amount": 14.5,
     "currency": "EUR"
   },
-  "category": "MAIN_COURSE",
-  "status": "DRAFT"
+  "category": "MAIN_COURSE"
 }
 
 ### Get all dishes for a restaurant
@@ -40,6 +39,9 @@ Content-Type: application/json
 ### Publish a dish
 PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/publish
 
+### Depublish a dish
+PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/depublish
+
 ### Set dish availability
 PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/availability
 Content-Type: application/json
@@ -56,5 +58,5 @@ POST http://localhost:8080/api/restaurants/{{restaurantId}}/schedule_publish
 Content-Type: application/json
 
 {
-  "publishAt": "2024-07-01T12:00:00"
+  "publishAt": "2025-10-11T14:32:00"
 }

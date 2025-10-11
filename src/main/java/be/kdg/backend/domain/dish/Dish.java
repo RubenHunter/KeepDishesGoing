@@ -18,6 +18,28 @@ public class Dish {
     private DishCategory category;
     private DishStatus status;
 
+    // Static factory to enforce domain creation rules
+    public static Dish createDraft(DishName name, Description description, Price price, DishCategory category) {
+        if (name == null) {
+            throw new IllegalArgumentException("Dish name must not be null");
+        }
+        if (price == null) {
+            throw new IllegalArgumentException("Price must not be null");
+        }
+        validatePriceStatic(price);
+
+        Description safeDescription = (description != null) ? description : new Description("");
+        DishCategory safeCategory = (category != null) ? category : DishCategory.MAIN_COURSE;
+
+        return new Dish(
+                DishId.create(),
+                name,
+                safeDescription,
+                price,
+                safeCategory,
+                DishStatus.DRAFT
+        );
+    }
 
     //methods
     //publish() -> validation: Price must be positive, Dish cannot be empty
@@ -66,6 +88,13 @@ public class Dish {
 
     //validatePrice(Price price)
     private void validatePrice(Price price) {
+        if (!price.isPositive(price.amount())) {
+            throw new IllegalArgumentException("Price must be positive");
+        }
+    }
+
+    //Static version for the static create factory
+    private static void validatePriceStatic(Price price) {
         if (!price.isPositive(price.amount())) {
             throw new IllegalArgumentException("Price must be positive");
         }

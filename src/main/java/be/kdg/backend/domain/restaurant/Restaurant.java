@@ -6,6 +6,7 @@ import lombok.*;
 import org.jmolecules.ddd.annotation.AggregateRoot;
 import org.jmolecules.ddd.annotation.Identity;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -31,6 +32,18 @@ public class Restaurant {
     }
     */
 
+    // Static factory to enforce domain creation rules
+    public static Restaurant create(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Restaurant name must not be blank");
+        }
+        return new Restaurant(
+                RestaurantId.create(),
+                new RestaurantName(name),
+                RestaurantStatus.INACTIVE,
+                new ArrayList<>()
+        );
+    }
 
     public void open() {
         if (this.status == RestaurantStatus.ACTIVE) {
@@ -51,28 +64,15 @@ public class Restaurant {
     //make dublicate wanneer je een published dish update en draft maakt.
     //createDraftDish(DishName dish, Price price) : DishId  -> business rule: Dish starts as DRAFT (DishStatus), must be explicitly published to be visible on menu
     public DishId createDraftDish(DishName name, Description description, DishCategory category, Price price) {
-        DishId newId = DishId.create();
-        Dish draftDish = new Dish(
-                newId,
-                name,
-                description != null ? description : new Description(""),
-                price,
-                category != null ? category : DishCategory.MAIN_COURSE,
-                DishStatus.DRAFT
-        );
+        //Use create static factory
+        Dish draftDish = Dish.createDraft(name, description, price, category);
         dishes.add(draftDish);
-        return newId;
+        return draftDish.getId();
     }
 
     // Update only mutable fields; keep name immutable
     public void updateDraftDish(DishId dishId, String name, String description, Price price, DishCategory category) {
         Dish dish = findDishById(dishId);
-
-        // Name is immutable; ignore or validate if provided
-        // if (name != null && !name.isBlank() && !new DishName(name).equals(dish.getName())) {
-        //     throw new IllegalArgumentException("Renaming a dish is not supported");
-        // }
-
         if (description != null) {
             dish.updateDescription(new Description(description));
         }
