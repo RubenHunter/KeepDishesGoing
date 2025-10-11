@@ -34,14 +34,12 @@ public class DishController {
      get, owner, resp: List<DishDto>
     */
     @PostMapping("/restaurants/{id}/dishes")
-    public ResponseEntity<Void> createDish(@Valid @RequestBody DishDto dto, @PathVariable final UUID id) {
-        log.info("Creating a new dish {}", dto);
+    public ResponseEntity<Void> createDish(@Valid @RequestBody CreateDishDto dto, @PathVariable final UUID id) {
         final RestaurantId restaurantId = new RestaurantId(id);
 
         DishCategory categoryEnum = (dto.category() == null || dto.category().isBlank())
                 ? null
                 : DishCategory.valueOf(dto.category().toUpperCase(Locale.ROOT));
-
 
         DishId createdId = dishService.createDraftDish(
                 restaurantId,
@@ -109,6 +107,16 @@ public class DishController {
         log.info("Publishing dish with id {} from restaurant with id {}", dishId, restaurantId);
         dishService.publishDish(new RestaurantId(restaurantId), new DishId(dishId));
 
+    }
+    /*
+     /dishes/{dishId}/depublish
+     patch, owner
+     */
+    @PatchMapping("/restaurants/{restaurantId}/dishes/{dishId}/depublish")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void dePublishDish(@PathVariable final UUID restaurantId, @PathVariable final UUID dishId) {
+        log.info("Depublishing dish with id {} from restaurant with id {}", dishId, restaurantId);
+        dishService.dePublishDish(new RestaurantId(restaurantId), new DishId(dishId));
     }
 
     /*

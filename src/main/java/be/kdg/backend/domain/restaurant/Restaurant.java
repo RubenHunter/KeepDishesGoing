@@ -48,6 +48,7 @@ public class Restaurant {
 
 
     //methodes:
+    //make dublicate wanneer je een published dish update en draft maakt.
     //createDraftDish(DishName dish, Price price) : DishId  -> business rule: Dish starts as DRAFT (DishStatus), must be explicitly published to be visible on menu
     public DishId createDraftDish(DishName name, Description description, DishCategory category, Price price) {
         DishId newId = DishId.create();
@@ -90,6 +91,10 @@ public class Restaurant {
         Dish dish = findDishById(dishId);
         validateDishCanBePublished(dish);
         dish.publish();
+    }
+    public void dePublishDish(DishId dishId) {
+        Dish dish = findDishById(dishId);
+        dish.markAsDraft();
     }
 
     //markDishOutOfStock(DishId dishId)

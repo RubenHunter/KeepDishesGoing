@@ -3,6 +3,8 @@ package be.kdg.backend.domain.restaurant;
 import org.jmolecules.ddd.annotation.ValueObject;
 import org.springframework.util.Assert;
 
+
+//string
 @ValueObject
 public record RestaurantName(String name) {
     public RestaurantName {

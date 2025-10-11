@@ -1,5 +1,6 @@
 package be.kdg.backend.api;
 
+import be.kdg.backend.api.dto.CreateRestaurantDto;
 import be.kdg.backend.api.dto.RestaurantDto;
 import be.kdg.backend.application.RestaurantService;
 import be.kdg.backend.domain.restaurant.Restaurant;
@@ -34,9 +35,8 @@ public class RestaurantController {
     get, public, resp: List<RestaurantDto>
     */
     @PostMapping({"", "/"})
-    public ResponseEntity<Void> createRestaurant(@RequestBody RestaurantDto dto) {
-        // Domain generates the id; service does mapping + save
-        RestaurantId createdId = restaurantService.createRestaurant(dto);
+    public ResponseEntity<Void> createRestaurant(@Valid @RequestBody CreateRestaurantDto dto) {
+        RestaurantId createdId = restaurantService.createRestaurant(dto.name());
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -47,7 +47,7 @@ public class RestaurantController {
     }
 
     @GetMapping({"", "/"})
-    public ResponseEntity<Iterable<RestaurantDto>> getAllRestaurants(@RequestParam(defaultValue = "") String name) {
+    public ResponseEntity<Iterable<RestaurantDto>> getAllRestaurants(/*@RequestParam(defaultValue = "") String name*/) {
         log.info("REST request to get all Restaurants");
         List<Restaurant> allRestaurants = restaurantService.listRestaurants();
         List<RestaurantDto> restaurantDtos = allRestaurants.stream()

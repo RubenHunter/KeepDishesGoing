@@ -26,21 +26,26 @@ public class RestaurantService {
         return restaurantRepository.getAll();
     }
 
-    public RestaurantId createRestaurant(final RestaurantDto dto) {
+    // Service does not depend on DTOs
+    public RestaurantId createRestaurant(final String name) {
         Restaurant restaurant = new Restaurant(
                 RestaurantId.create(),
-                new RestaurantName(dto.name()),
+                new RestaurantName(name),
                 RestaurantStatus.INACTIVE,
                 new ArrayList<>()
         );
+        //static create method domein regels in Restaurant domain
         restaurantRepository.save(restaurant);
         return restaurant.getId();
     }
+
+    /*
     // Keep the original for other internal usages if any
     public Restaurant createRestaurant(final Restaurant restaurant) {
         restaurantRepository.save(restaurant);
         return restaurant;
     }
+    */
 
     public Restaurant getRestaurantById(final RestaurantId id) {
         return restaurantRepository.getById(id)
@@ -58,16 +63,5 @@ public class RestaurantService {
         restaurantRepository.save(restaurant);
     }
 
-    public Dish getDishById(DishId dishId) {
-        Restaurant restaurant = restaurantRepository.findByDishId(dishId)
-                .orElseThrow(dishId::notFound);
-        return restaurant.getDishById(dishId);
-    }
-
-    public List<Dish> listDishesOfRestaurant(RestaurantId restaurantId) {
-        Restaurant restaurant = restaurantRepository.getById(restaurantId)
-                .orElseThrow(restaurantId::notFound);
-        return restaurant.getDishes();
-    }
 
 }

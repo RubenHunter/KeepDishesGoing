@@ -17,5 +17,5 @@ POST http://localhost:8080/api/restaurants
 Content-Type: application/json
 
 {
-  "name": "Test Bistro"
+  "name": "Test Restaurant"
 }

@@ -7,23 +7,25 @@ import be.kdg.backend.domain.dish.*;
 import be.kdg.backend.domain.restaurant.IRestaurantRepository;
 import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.domain.restaurant.RestaurantId;
+import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishEntity;
+import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @Transactional
 public class DishService {
 
     private final IRestaurantRepository restaurantRepository;
+    private final JpaScheduledPublishRepository scheduledRepo;
 
-    public DishService(IRestaurantRepository restaurantRepository) {
+    public DishService(IRestaurantRepository restaurantRepository,
+                       JpaScheduledPublishRepository scheduledRepo) {
         this.restaurantRepository = restaurantRepository;
+        this.scheduledRepo = scheduledRepo;
     }
 
 
@@ -90,6 +92,13 @@ public class DishService {
         restaurantRepository.save(restaurant);
     }
 
+    public void dePublishDish(RestaurantId restaurantId, DishId dishId) {
+        Restaurant restaurant = restaurantRepository.getById(restaurantId)
+                .orElseThrow(restaurantId::notFound);
+        restaurant.dePublishDish(dishId);
+        restaurantRepository.save(restaurant);
+    }
+
     // Set availability by publishing or marking out of stock
     public void setDishAvailability(RestaurantId restaurantId, DishId dishId, boolean available) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
@@ -104,7 +113,7 @@ public class DishService {
         restaurantRepository.save(restaurant);
     }
 
-    // Publish all DRAFT dishes (no try/catch; validations live in the domain)
+    // Publish all DRAFT dishes
     public void publishAllDraftDishes(RestaurantId restaurantId) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
@@ -121,9 +130,18 @@ public class DishService {
     }
 
     public void schedulePublishAllDraftDishes(RestaurantId restaurantId, LocalDateTime publishAt) {
-        // TODO: Implement scheduling logic (e.g., save to DB, trigger job)
-        // For now, just log
-        System.out.printf("Scheduled publish of all draft dishes for restaurant %s at %s%n", restaurantId, publishAt);
+        // validate restaurant exists
+        restaurantRepository.getById(restaurantId).orElseThrow(restaurantId::notFound);
+
+        if (publishAt == null) throw new IllegalArgumentException("publishAt must not be null");
+        if (publishAt.isBefore(LocalDateTime.now())) throw new IllegalArgumentException("publishAt must be in the future");
+
+        JpaScheduledPublishEntity job = new JpaScheduledPublishEntity(
+                UUID.randomUUID(),
+                restaurantId.id(),
+                publishAt
+        );
+        scheduledRepo.save(job);
     }
 
 
