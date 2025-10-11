@@ -8,6 +8,7 @@ import org.jmolecules.ddd.annotation.Identity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Getter
 @AllArgsConstructor
@@ -70,27 +71,74 @@ public class Restaurant {
         return draftDish.getId();
     }
 
-    // Update only mutable fields; keep name immutable
-    public void updateDraftDish(DishId dishId, String name, String description, Price price, DishCategory category) {
-        Dish dish = findDishById(dishId);
-        if (description != null) {
-            dish.updateDescription(new Description(description));
+    // Update behavior with versioning:
+    // Reuse a single draft per logical dish (by name). If editing a published dish:
+    // - find existing draft with same name and reset it to the current published state,
+    // - If target is PUBLISHED -> create a new DRAFT copy with updates and return its id.
+    // - If target is DRAFT/other -> update in place and keep it DRAFT.
+    // Name is immutable; reject attempts to change it.
+    public DishId updateDraftDish(DishId dishId, String name, String description, Price price, DishCategory category) {
+        Dish current = findDishById(dishId);
+
+        if (name != null && !name.equals(current.getName().name())) {
+            throw new IllegalArgumentException("Dish name is immutable");
         }
-        if (price != null) {
-            dish.updatePrice(price);
+
+        if (current.getStatus() == DishStatus.PUBLISHED) {
+            Dish draft = findDraftByName(current.getName())
+                    .orElseGet(() -> {
+                        Dish d = Dish.createDraft(current.getName(), current.getDescription(), current.getPrice(), current.getCategory());
+                        dishes.add(d);
+                        return d;
+                    });
+
+            // reset draft to current published baseline
+            draft.updateDescription(current.getDescription());
+            draft.updatePrice(current.getPrice());
+            draft.updateCategory(current.getCategory());
+
+            // apply incoming updates
+            if (description != null) {
+                draft.updateDescription(new Description(description));
+            }
+            if (price != null) {
+                draft.updatePrice(price);
+            }
+            if (category != null) {
+                draft.updateCategory(category);
+            }
+            draft.markAsDraft();
+            return draft.getId();
+        } else {
+            if (description != null) {
+                current.updateDescription(new Description(description));
+            }
+            if (price != null) {
+                current.updatePrice(price);
+            }
+            if (category != null) {
+                current.updateCategory(category);
+            }
+            current.markAsDraft();
+            return dishId;
         }
-        if (category != null) {
-            dish.updateCategory(category);
-        }
-        dish.markAsDraft();
     }
 
 
     //publishDish(DishId dishId)
+    // Publish a dish and demote any other published version with the same name
     public void publishDish(DishId dishId) {
-        Dish dish = findDishById(dishId);
-        validateDishCanBePublished(dish);
-        dish.publish();
+        Dish toPublish = findDishById(dishId);
+        validateDishCanBePublished(toPublish);
+
+        for (Dish other : dishes) {
+            if (!other.getId().equals(toPublish.getId())
+                    && other.getStatus() == DishStatus.PUBLISHED
+                    && other.getName().equals(toPublish.getName())) {
+                other.markAsDraft(); // remove old version from the menu
+            }
+        }
+        toPublish.publish();
     }
     public void dePublishDish(DishId dishId) {
         Dish dish = findDishById(dishId);
@@ -127,6 +175,12 @@ public class Restaurant {
         }
         */
 
+    }
+
+    private Optional<Dish> findDraftByName(DishName name) {
+        return dishes.stream()
+                .filter(d -> d.getStatus() == DishStatus.DRAFT && d.getName().equals(name))
+                .findFirst();
     }
 
     // Helper method

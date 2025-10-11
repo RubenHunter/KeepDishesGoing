@@ -1,6 +1,6 @@
 @restaurantId = a6a52c73-9070-4128-a988-255383b941bc
 
-@dishId = a3354a31-936c-455f-a827-cfad69d6289f
+@dishId = b1ef03c7-bc28-4d19-b035-6fb62eb39a22
 ### Create a new dish
 POST http://localhost:8080/api/restaurants/{{restaurantId}}/dishes
 Content-Type: application/json
@@ -27,7 +27,7 @@ PUT http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}
 Content-Type: application/json
 
 {
-  "name": "Lasagna Special",
+  "name": "Lasagna",
   "description": "Layered pasta with meat, cheese, and spinach",
   "price": {
     "amount": 20.0,

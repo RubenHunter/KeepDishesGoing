@@ -38,7 +38,6 @@ public class DishService {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
 
-        // pass arguments in the order expected by the domain method
         DishId id = restaurant.createDraftDish(name, description, category, price);
         restaurantRepository.save(restaurant);
         return id;
@@ -64,12 +63,12 @@ public class DishService {
         return restaurant.getPublishedMenu();
     }
 
-    // Update a draft dish through the aggregate behavior
+    // Returns the updated dish, which may be a new draft if the original was published
     public DishDto updateDraftDish(RestaurantId restaurantId, DishId dishId, UpdateDishDto dto) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
 
-        restaurant.updateDraftDish(
+        DishId resultId = restaurant.updateDraftDish(
                 dishId,
                 dto.name(),
                 dto.description(),
@@ -79,7 +78,7 @@ public class DishService {
 
         restaurantRepository.save(restaurant);
 
-        Dish updated = restaurant.getDishById(dishId);
+        Dish updated = restaurant.getDishById(resultId);
         return DishDto.from(updated);
     }
 
@@ -143,9 +142,5 @@ public class DishService {
         );
         scheduledRepo.save(job);
     }
-
-
-
-
 
 }
