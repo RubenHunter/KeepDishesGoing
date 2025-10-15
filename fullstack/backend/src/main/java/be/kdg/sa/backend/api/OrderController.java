@@ -2,9 +2,8 @@ package be.kdg.sa.backend.api;
 
 import be.kdg.sa.backend.application.CreateOrderCommand;
 import be.kdg.sa.backend.application.OrderApplicationService;
-import be.kdg.sa.backend.application.OrderItemCommand;
-import be.kdg.sa.backend.domain.Entities.Order;
-import be.kdg.sa.backend.domain.ValueObjects.OrderId;
+import be.kdg.sa.backend.domain.Order.Order;
+import be.kdg.sa.backend.domain.Order.OrderId;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

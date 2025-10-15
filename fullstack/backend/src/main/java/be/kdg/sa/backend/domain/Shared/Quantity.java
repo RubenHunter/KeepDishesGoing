@@ -1,4 +1,4 @@
-package be.kdg.sa.backend.domain.ValueObjects;
+package be.kdg.sa.backend.domain.Shared;
 
 import lombok.Value;
 import org.jmolecules.ddd.annotation.ValueObject;

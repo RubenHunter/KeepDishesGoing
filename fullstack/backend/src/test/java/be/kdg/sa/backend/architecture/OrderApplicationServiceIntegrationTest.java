@@ -2,12 +2,8 @@ package be.kdg.sa.backend.architecture;
 
 import be.kdg.sa.backend.application.CreateOrderCommand;
 import be.kdg.sa.backend.application.OrderApplicationService;
-import be.kdg.sa.backend.domain.Entities.Order;
-import be.kdg.sa.backend.domain.Enums.OrderStatus;
-import be.kdg.sa.backend.domain.ValueObjects.CustomerId;
-import be.kdg.sa.backend.domain.ValueObjects.Money;
-import be.kdg.sa.backend.domain.ValueObjects.OrderId;
-import be.kdg.sa.backend.domain.ValueObjects.RestaurantId;
+import be.kdg.sa.backend.domain.Order.*;
+import be.kdg.sa.backend.domain.Shared.Money;
 import be.kdg.sa.backend.infrastructure.JpaOrderRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,6 +1,6 @@
 package be.kdg.sa.backend.architecture;
 
-import be.kdg.sa.backend.domain.ValueObjects.Money;
+import be.kdg.sa.backend.domain.Shared.Money;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 

@@ -1,14 +1,10 @@
 package be.kdg.sa.backend.infrastructure;
 
-import be.kdg.sa.backend.domain.Entities.Order;
-import be.kdg.sa.backend.domain.Enums.OrderStatus;
-import be.kdg.sa.backend.domain.ValueObjects.CustomerId;
-import be.kdg.sa.backend.domain.ValueObjects.OrderId;
-import be.kdg.sa.backend.domain.ValueObjects.RestaurantId;
+import be.kdg.sa.backend.domain.Order.*;
+import be.kdg.sa.backend.domain.Shared.Money;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -16,11 +12,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
 
 @Entity
 @Table(name = "orders", schema = "ordering")
 @Getter
-@Setter
 @NoArgsConstructor
 public class OrderJpaEntity {
     @Id
@@ -59,7 +56,6 @@ public class OrderJpaEntity {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItemJpaEntity> items = new ArrayList<>();
 
-    // Constructors voor test gemak
     public OrderJpaEntity(String id, String customerId, String restaurantId, String deliveryAddress,
                           String customerEmail, OrderStatus status, BigDecimal totalAmount, String currency) {
         this.id = id;
@@ -84,19 +80,58 @@ public class OrderJpaEntity {
         entity.currency = order.getTotalAmount().getCurrency();
         entity.createDate = order.getCreateDate();
         entity.updateDate = order.getUpdateDate();
-
         return entity;
     }
 
+    public void addOrderItem(OrderItemJpaEntity orderItem) {
+        orderItem.setOrder(this);
+        this.items.add(orderItem);
+    }
+
     public Order toDomain() {
-        Order order = new Order(
+        List<OrderItem> domainItems = this.items.stream()
+                .map(OrderItemJpaEntity::toDomain)
+                .collect(Collectors.toList());
+
+        return Order.reconstruct(
                 OrderId.of(this.id),
                 CustomerId.of(this.customerId),
                 RestaurantId.of(this.restaurantId),
                 this.deliveryAddress,
-                this.customerEmail
+                this.customerEmail,
+                this.status,
+                Money.of(this.totalAmount, this.currency),
+                this.createDate,
+                this.updateDate,
+                domainItems
         );
+    }
 
-        return order;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        OrderJpaEntity that = (OrderJpaEntity) o;
+        return id != null && id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "OrderJpaEntity{" +
+                "id='" + id + '\'' +
+                ", customerId='" + customerId + '\'' +
+                ", restaurantId='" + restaurantId + '\'' +
+                ", status=" + status +
+                ", totalAmount=" + totalAmount +
+                ", currency='" + currency + '\'' +
+                ", createDate=" + createDate +
+                ", updateDate=" + updateDate +
+                ", itemsCount=" + items.size() +
+                '}';
     }
 }

@@ -1,4 +1,4 @@
-package be.kdg.sa.backend.domain.ValueObjects;
+package be.kdg.sa.backend.domain.Order;
 
 import lombok.Value;
 import org.jmolecules.ddd.annotation.ValueObject;
@@ -8,30 +8,30 @@ import java.util.UUID;
 
 @ValueObject
 @Value
-public class OrderId {
+public class CustomerId {
     String value;
 
-    private OrderId(String value) {
+    private CustomerId(String value) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Order ID cannot be null or empty");
+            throw new IllegalArgumentException("Customer ID cannot be null or empty");
         }
         this.value = value;
     }
 
-    public static OrderId generate() {
-        return new OrderId("ORD-" + UUID.randomUUID().toString());
+    public static CustomerId of(String value) {
+        return new CustomerId(value);
     }
 
-    public static OrderId of(String value) {
-        return new OrderId(value);
+    public static CustomerId generate() {
+        return new CustomerId("CUST-" + UUID.randomUUID().toString());
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        OrderId orderId = (OrderId) o;
-        return Objects.equals(value, orderId.value);
+        CustomerId that = (CustomerId) o;
+        return Objects.equals(value, that.value);
     }
 
     @Override

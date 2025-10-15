@@ -1,4 +1,4 @@
-package be.kdg.sa.backend.domain.ValueObjects;
+package be.kdg.sa.backend.domain.Order;
 
 import lombok.Value;
 import org.jmolecules.ddd.annotation.ValueObject;
@@ -6,31 +6,32 @@ import org.jmolecules.ddd.annotation.ValueObject;
 import java.util.Objects;
 import java.util.UUID;
 
+
 @ValueObject
 @Value
-public class RestaurantId {
+public class OrderItemId {
     String value;
 
-    private RestaurantId(String value) {
+    private OrderItemId(String value) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Restaurant ID cannot be null or empty");
+            throw new IllegalArgumentException("OrderItem ID cannot be null or empty");
         }
         this.value = value;
     }
 
-    public static RestaurantId of(String value) {
-        return new RestaurantId(value);
+    public static OrderItemId generate() {
+        return new OrderItemId("ITEM-" + UUID.randomUUID().toString());
     }
 
-    public static RestaurantId generate() {
-        return new RestaurantId("REST-" + UUID.randomUUID().toString());
+    public static OrderItemId of(String value) {
+        return new OrderItemId(value); // OrderItemId i.p.v. OrderId
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        RestaurantId that = (RestaurantId) o;
+        OrderItemId that = (OrderItemId) o;
         return Objects.equals(value, that.value);
     }
 

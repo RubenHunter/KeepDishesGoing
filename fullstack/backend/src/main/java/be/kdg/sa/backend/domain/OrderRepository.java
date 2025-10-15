@@ -1,7 +1,7 @@
 package be.kdg.sa.backend.domain;
 
-import be.kdg.sa.backend.domain.Entities.Order;
-import be.kdg.sa.backend.domain.ValueObjects.OrderId;
+import be.kdg.sa.backend.domain.Order.Order;
+import be.kdg.sa.backend.domain.Order.OrderId;
 import org.jmolecules.ddd.annotation.Repository;
 
 import java.util.Optional;

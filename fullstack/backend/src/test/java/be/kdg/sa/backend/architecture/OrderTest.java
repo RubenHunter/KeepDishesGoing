@@ -1,9 +1,8 @@
 package be.kdg.sa.backend.architecture;
 
-import be.kdg.sa.backend.domain.Entities.MenuItemId;
-import be.kdg.sa.backend.domain.Entities.Order;
-import be.kdg.sa.backend.domain.Enums.OrderStatus;
-import be.kdg.sa.backend.domain.ValueObjects.*;
+import be.kdg.sa.backend.domain.Order.*;
+import be.kdg.sa.backend.domain.Shared.Money;
+import be.kdg.sa.backend.domain.Shared.Quantity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 

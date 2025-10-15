@@ -1,4 +1,4 @@
-package be.kdg.sa.backend.domain.Enums;
+package be.kdg.sa.backend.domain.Order;
 
 public enum OrderStatus {
     PENDING,        // Order being created, items can be modified

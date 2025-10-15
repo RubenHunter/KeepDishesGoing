@@ -1,10 +1,10 @@
 package be.kdg.sa.backend.application;
 
 
-import be.kdg.sa.backend.domain.Entities.MenuItemId;
-import be.kdg.sa.backend.domain.Entities.Order;
+import be.kdg.sa.backend.domain.Order.*;
 import be.kdg.sa.backend.domain.OrderRepository;
-import be.kdg.sa.backend.domain.ValueObjects.*;
+import be.kdg.sa.backend.domain.Shared.Money;
+import be.kdg.sa.backend.domain.Shared.Quantity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

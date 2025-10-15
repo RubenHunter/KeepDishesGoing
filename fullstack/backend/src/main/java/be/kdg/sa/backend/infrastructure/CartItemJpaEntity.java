@@ -1,7 +1,7 @@
 package be.kdg.sa.backend.infrastructure;
 
 import be.kdg.sa.backend.domain.Order.MenuItemId;
-import be.kdg.sa.backend.domain.Order.OrderItem;
+import be.kdg.sa.backend.domain.Shared.CartItem;
 import be.kdg.sa.backend.domain.Shared.Money;
 import be.kdg.sa.backend.domain.Shared.Quantity;
 import jakarta.persistence.*;
@@ -12,13 +12,11 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-
 @Entity
-@Table(name = "order_items", schema = "ordering")
+@Table(name = "cart_items", schema = "ordering")
 @Getter
 @NoArgsConstructor
-public class OrderItemJpaEntity {
-
+public class CartItemJpaEntity {
     @Id
     @Column(name = "id", nullable = false)
     private String id;
@@ -27,9 +25,9 @@ public class OrderItemJpaEntity {
     private String menuItemId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
+    @JoinColumn(name = "shopping_cart_id", nullable = false)
     @Setter
-    private OrderJpaEntity order;
+    private ShoppingCartJpaEntity shoppingCart;
 
     @Column(name = "item_name", nullable = false)
     private String itemName;
@@ -43,20 +41,20 @@ public class OrderItemJpaEntity {
     @Column(name = "currency", nullable = false)
     private String currency;
 
-    public static OrderItemJpaEntity fromDomain(OrderItem orderItem, OrderJpaEntity order) {
-        OrderItemJpaEntity entity = new OrderItemJpaEntity();
+    public static CartItemJpaEntity fromDomain(CartItem cartItem, ShoppingCartJpaEntity shoppingCart) {
+        CartItemJpaEntity entity = new CartItemJpaEntity();
         entity.id = UUID.randomUUID().toString();
-        entity.menuItemId = orderItem.getMenuItemId().getValue();
-        entity.order = order;
-        entity.itemName = orderItem.getItemName();
-        entity.quantity = orderItem.getQuantity().getValue();
-        entity.unitPrice = orderItem.getUnitPrice().getAmount();
-        entity.currency = orderItem.getUnitPrice().getCurrency();
+        entity.menuItemId = cartItem.getMenuItemId().getValue();
+        entity.shoppingCart = shoppingCart;
+        entity.itemName = cartItem.getItemName();
+        entity.quantity = cartItem.getQuantity().getValue();
+        entity.unitPrice = cartItem.getUnitPrice().getAmount();
+        entity.currency = cartItem.getUnitPrice().getCurrency();
         return entity;
     }
 
-    public OrderItem toDomain() {
-        return new OrderItem(
+    public CartItem toDomain() {
+        return new CartItem(
                 MenuItemId.of(this.menuItemId),
                 this.itemName,
                 Quantity.of(this.quantity),
@@ -68,24 +66,12 @@ public class OrderItemJpaEntity {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        OrderItemJpaEntity that = (OrderItemJpaEntity) o;
+        CartItemJpaEntity that = (CartItemJpaEntity) o;
         return id != null && id.equals(that.id);
     }
 
     @Override
     public int hashCode() {
         return getClass().hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return "OrderItemJpaEntity{" +
-                "id='" + id + '\'' +
-                ", menuItemId='" + menuItemId + '\'' +
-                ", itemName='" + itemName + '\'' +
-                ", quantity=" + quantity +
-                ", unitPrice=" + unitPrice +
-                ", currency='" + currency + '\'' +
-                '}';
     }
 }

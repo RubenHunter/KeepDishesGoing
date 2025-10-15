@@ -1,4 +1,4 @@
-package be.kdg.sa.backend.domain.Entities;
+package be.kdg.sa.backend.domain.Order;
 
 import lombok.Value;
 import org.jmolecules.ddd.annotation.ValueObject;
@@ -8,29 +8,29 @@ import java.util.UUID;
 
 @ValueObject
 @Value
-public class MenuItemId {
+public class RestaurantId {
     String value;
 
-    private MenuItemId(String value) {
+    private RestaurantId(String value) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("MenuItem ID cannot be null or empty");
+            throw new IllegalArgumentException("Restaurant ID cannot be null or empty");
         }
         this.value = value;
     }
 
-    public static MenuItemId of(String value) {
-        return new MenuItemId(value);
+    public static RestaurantId of(String value) {
+        return new RestaurantId(value);
     }
 
-    public static MenuItemId generate() {
-        return new MenuItemId("MENU-" + UUID.randomUUID().toString());
+    public static RestaurantId generate() {
+        return new RestaurantId("REST-" + UUID.randomUUID().toString());
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MenuItemId that = (MenuItemId) o;
+        RestaurantId that = (RestaurantId) o;
         return Objects.equals(value, that.value);
     }
 

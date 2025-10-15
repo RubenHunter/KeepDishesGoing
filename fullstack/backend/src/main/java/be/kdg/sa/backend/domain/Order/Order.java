@@ -1,7 +1,7 @@
-package be.kdg.sa.backend.domain.Entities;
+package be.kdg.sa.backend.domain.Order;
 
-import be.kdg.sa.backend.domain.Enums.OrderStatus;
-import be.kdg.sa.backend.domain.ValueObjects.*;
+import be.kdg.sa.backend.domain.Shared.Money;
+import be.kdg.sa.backend.domain.Shared.Quantity;
 import lombok.Getter;
 import org.jmolecules.ddd.annotation.AggregateRoot;
 import org.jmolecules.ddd.annotation.Identity;
@@ -40,10 +40,10 @@ public class Order {
     private LocalDateTime updateDate;
 
     @Getter
-    private String deliveryAddress;
+    private final String deliveryAddress;
 
     @Getter
-    private String customerEmail;
+    private final String customerEmail;
 
     public Order(OrderId id, CustomerId customerId, RestaurantId restaurantId,
                  String deliveryAddress, String customerEmail) {
@@ -69,6 +69,30 @@ public class Order {
         this.updateDate = LocalDateTime.now();
     }
 
+    private Order(OrderId id, CustomerId customerId, RestaurantId restaurantId,
+                  String deliveryAddress, String customerEmail, OrderStatus status,
+                  Money totalAmount, LocalDateTime createDate, LocalDateTime updateDate,
+                  List<OrderItem> items) {
+        this.id = id;
+        this.customerId = customerId;
+        this.restaurantId = restaurantId;
+        this.deliveryAddress = deliveryAddress;
+        this.customerEmail = customerEmail;
+        this.status = status;
+        this.totalAmount = totalAmount;
+        this.createDate = createDate;
+        this.updateDate = updateDate;
+        this.items = new ArrayList<>(items);
+    }
+
+    public static Order reconstruct(OrderId id, CustomerId customerId, RestaurantId restaurantId,
+                                    String deliveryAddress, String customerEmail, OrderStatus status,
+                                    Money totalAmount, LocalDateTime createDate, LocalDateTime updateDate,
+                                    List<OrderItem> items) {
+        return new Order(id, customerId, restaurantId, deliveryAddress, customerEmail,
+                status, totalAmount, createDate, updateDate, items);
+    }
+
     public void addItem(MenuItemId menuItemId, String itemName, Quantity quantity, Money unitPrice) {
         validateOrderInPendingState();
 
@@ -79,42 +103,48 @@ public class Order {
             throw new IllegalArgumentException("Item name cannot be blank");
         }
 
-        OrderItem newItem = new OrderItem(
-                OrderItemId.generate(),
-                menuItemId,
-                itemName,
-                quantity,
-                unitPrice
-        );
+        OrderItem existingItem = items.stream()
+                .filter(item -> item.isSameMenuItem(menuItemId))
+                .findFirst()
+                .orElse(null);
 
-        items.add(newItem);
+        if (existingItem != null) {
+            if (!existingItem.hasSamePrice(unitPrice)) {
+                throw new IllegalArgumentException("Cannot add same menu item with different price");
+            }
+            existingItem.increaseQuantity(quantity.getValue());
+        } else {
+            OrderItem newItem = new OrderItem(menuItemId, itemName, quantity, unitPrice);
+            items.add(newItem);
+        }
+
         recalculateTotal();
         updateDate = LocalDateTime.now();
     }
 
-    public void removeItem(OrderItemId itemId) {
+    public void removeItem(MenuItemId menuItemId) {
         validateOrderInPendingState();
 
-        if (itemId == null) {
-            throw new IllegalArgumentException("Item ID cannot be null");
+        if (menuItemId == null) {
+            throw new IllegalArgumentException("MenuItem ID cannot be null");
         }
 
-        boolean removed = items.removeIf(item -> item.getId().equals(itemId));
+        boolean removed = items.removeIf(item -> item.getMenuItemId().equals(menuItemId));
         if (removed) {
             recalculateTotal();
             updateDate = LocalDateTime.now();
         }
     }
 
-    public void updateItemQuantity(OrderItemId itemId, Quantity newQuantity) {
+    public void updateItemQuantity(MenuItemId menuItemId, Quantity newQuantity) {
         validateOrderInPendingState();
 
-        if (itemId == null || newQuantity == null) {
-            throw new IllegalArgumentException("Item ID and quantity cannot be null");
+        if (menuItemId == null || newQuantity == null) {
+            throw new IllegalArgumentException("MenuItem ID and quantity cannot be null");
         }
 
         OrderItem item = items.stream()
-                .filter(i -> i.getId().equals(itemId))
+                .filter(i -> i.getMenuItemId().equals(menuItemId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Item not found in order"));
 
