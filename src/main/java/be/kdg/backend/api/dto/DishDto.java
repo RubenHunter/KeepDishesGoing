@@ -31,7 +31,7 @@ public record DishDto(
     }
     public Dish to() {
         return new Dish(
-                //TODO: currency en dishstatus nog zien voor beste manier om te initializeren
+                //TODO: currency nog zien voor beste manier om te initializeren
                 DishId.create(),
                 new DishName(this.name),
                 new Description(this.description),

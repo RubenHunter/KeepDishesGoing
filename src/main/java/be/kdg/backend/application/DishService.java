@@ -7,6 +7,8 @@ import be.kdg.backend.domain.dish.*;
 import be.kdg.backend.domain.restaurant.IRestaurantRepository;
 import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.domain.restaurant.RestaurantId;
+import be.kdg.backend.domain.scheduling.IScheduledPublishRepository;
+import be.kdg.backend.domain.scheduling.ScheduledPublishJob;
 import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishEntity;
 import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishRepository;
 import org.springframework.stereotype.Service;
@@ -20,14 +22,13 @@ import java.util.*;
 public class DishService {
 
     private final IRestaurantRepository restaurantRepository;
-    private final JpaScheduledPublishRepository scheduledRepo;
+    private final IScheduledPublishRepository scheduledRepo;
 
     public DishService(IRestaurantRepository restaurantRepository,
-                       JpaScheduledPublishRepository scheduledRepo) {
+                       IScheduledPublishRepository scheduledRepo) {
         this.restaurantRepository = restaurantRepository;
         this.scheduledRepo = scheduledRepo;
     }
-
 
     // Create a draft dish inside the Restaurant aggregate
     public DishId createDraftDish(RestaurantId restaurantId,
@@ -129,17 +130,12 @@ public class DishService {
     }
 
     public void schedulePublishAllDraftDishes(RestaurantId restaurantId, LocalDateTime publishAt) {
-        // validate restaurant exists
         restaurantRepository.getById(restaurantId).orElseThrow(restaurantId::notFound);
 
         if (publishAt == null) throw new IllegalArgumentException("publishAt must not be null");
         if (publishAt.isBefore(LocalDateTime.now())) throw new IllegalArgumentException("publishAt must be in the future");
 
-        JpaScheduledPublishEntity job = new JpaScheduledPublishEntity(
-                UUID.randomUUID(),
-                restaurantId.id(),
-                publishAt
-        );
+        ScheduledPublishJob job = ScheduledPublishJob.create(UUID.randomUUID(), restaurantId.id(), publishAt);
         scheduledRepo.save(job);
     }
 

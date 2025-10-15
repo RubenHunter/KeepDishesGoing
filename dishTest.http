@@ -1,6 +1,6 @@
 @restaurantId = a6a52c73-9070-4128-a988-255383b941bc
 
-@dishId = b1ef03c7-bc28-4d19-b035-6fb62eb39a22
+@dishId = 4ac746dc-7943-479e-b3ee-d158b9f15260
 ### Create a new dish
 POST http://localhost:8080/api/restaurants/{{restaurantId}}/dishes
 Content-Type: application/json
@@ -58,5 +58,5 @@ POST http://localhost:8080/api/restaurants/{{restaurantId}}/schedule_publish
 Content-Type: application/json
 
 {
-  "publishAt": "2025-10-11T14:32:00"
+  "publishAt": "2025-10-15T20:39:00"
 }

@@ -71,6 +71,7 @@ public class Restaurant {
         return draftDish.getId();
     }
 
+
     // Update behavior with versioning:
     // Reuse a single draft per logical dish (by name). If editing a published dish:
     // - find existing draft with same name and reset it to the current published state,
@@ -126,18 +127,18 @@ public class Restaurant {
 
 
     //publishDish(DishId dishId)
-    // Publish a dish and demote any other published version with the same name
+    // Publish a dish and delete any other published version with the same name
     public void publishDish(DishId dishId) {
         Dish toPublish = findDishById(dishId);
         validateDishCanBePublished(toPublish);
 
-        for (Dish other : dishes) {
-            if (!other.getId().equals(toPublish.getId())
-                    && other.getStatus() == DishStatus.PUBLISHED
-                    && other.getName().equals(toPublish.getName())) {
-                other.markAsDraft(); // remove old version from the menu
-            }
-        }
+        // Remove previously published version(s) with the same name
+        dishes.removeIf(other ->
+                !other.getId().equals(toPublish.getId())
+                        && other.getStatus() == DishStatus.PUBLISHED
+                        && other.getName().equals(toPublish.getName())
+        );
+
         toPublish.publish();
     }
     public void dePublishDish(DishId dishId) {
