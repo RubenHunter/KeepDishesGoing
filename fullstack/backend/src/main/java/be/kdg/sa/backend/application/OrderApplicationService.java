@@ -1,6 +1,5 @@
 package be.kdg.sa.backend.application;
 
-
 import be.kdg.sa.backend.domain.Order.*;
 import be.kdg.sa.backend.domain.OrderRepository;
 import be.kdg.sa.backend.domain.Shared.Money;
@@ -9,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -38,13 +39,49 @@ public class OrderApplicationService {
             );
         }
 
-        order.placeOrder();
         Order savedOrder = orderRepository.save(order);
 
         log.info("Order created successfully: {}", savedOrder.getId().getValue());
         return savedOrder.getId();
     }
 
+    public void placeOrder(OrderId orderId) {
+        log.info("Placing order: {}", orderId.getValue());
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId.getValue()));
+
+        order.placeOrder();
+
+        Order savedOrder = orderRepository.save(order);
+
+        log.info("Order placed successfully: {}. Total amount frozen: {} {}",
+                orderId.getValue(),
+                savedOrder.getTotalAmount().getAmount(),
+                savedOrder.getTotalAmount().getCurrency());
+    }
+
+    public boolean canModifyOrder(OrderId orderId) {
+        return orderRepository.findById(orderId)
+                .map(order -> !order.isPlaced())
+                .orElse(false);
+    }
+
+    public OrderDetails getOrderDetails(OrderId orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId.getValue()));
+
+        return new OrderDetails(
+                order.getId(),
+                order.getCustomerId(),
+                order.getRestaurantId(),
+                order.getItems(),
+                order.getTotalAmount(),
+                order.getStatus(),
+                order.getOrderPlacedAt(),
+                order.isPlaced()
+        );
+    }
 
     public void acceptOrder(OrderId orderId) {
         log.info("Accepting order: {}", orderId.getValue());
@@ -99,8 +136,14 @@ public class OrderApplicationService {
                 .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId.getValue()));
     }
 
-    public void checkAndAutoRejectPendingOrders() {
-        log.info("Checking for orders that need auto-rejection");
-        // Implementation for US23-24: Auto-reject after 5 minutes
-    }
+    public record OrderDetails(
+            OrderId orderId,
+            CustomerId customerId,
+            RestaurantId restaurantId,
+            java.util.List<OrderItem> items,
+            Money totalAmount,
+            OrderStatus status,
+            LocalDateTime orderPlacedAt,
+            boolean isPlaced
+    ) {}
 }

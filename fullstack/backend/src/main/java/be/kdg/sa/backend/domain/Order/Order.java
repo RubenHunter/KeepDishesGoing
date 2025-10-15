@@ -24,14 +24,12 @@ public class Order {
     @Getter
     private final RestaurantId restaurantId;
 
-    @Getter
     private final List<OrderItem> items;
 
     @Getter
     private OrderStatus status;
 
-    @Getter
-    private Money totalAmount;
+    private final Money totalAmount;
 
     @Getter
     private final LocalDateTime createDate;
@@ -45,17 +43,12 @@ public class Order {
     @Getter
     private final String customerEmail;
 
+    @Getter
+    private LocalDateTime orderPlacedAt;
+
     public Order(OrderId id, CustomerId customerId, RestaurantId restaurantId,
                  String deliveryAddress, String customerEmail) {
-        if (id == null || customerId == null || restaurantId == null) {
-            throw new IllegalArgumentException("Order ID, customer ID and restaurant ID cannot be null");
-        }
-        if (deliveryAddress == null || deliveryAddress.isBlank()) {
-            throw new IllegalArgumentException("Delivery address cannot be null or empty");
-        }
-        if (customerEmail == null || customerEmail.isBlank()) {
-            throw new IllegalArgumentException("Customer email cannot be null or empty");
-        }
+        validateConstructorParameters(id, customerId, restaurantId, deliveryAddress, customerEmail);
 
         this.id = id;
         this.customerId = customerId;
@@ -67,12 +60,13 @@ public class Order {
         this.totalAmount = Money.ZERO;
         this.createDate = LocalDateTime.now();
         this.updateDate = LocalDateTime.now();
+        this.orderPlacedAt = null;
     }
 
     private Order(OrderId id, CustomerId customerId, RestaurantId restaurantId,
                   String deliveryAddress, String customerEmail, OrderStatus status,
                   Money totalAmount, LocalDateTime createDate, LocalDateTime updateDate,
-                  List<OrderItem> items) {
+                  LocalDateTime orderPlacedAt, List<OrderItem> items) {
         this.id = id;
         this.customerId = customerId;
         this.restaurantId = restaurantId;
@@ -82,15 +76,29 @@ public class Order {
         this.totalAmount = totalAmount;
         this.createDate = createDate;
         this.updateDate = updateDate;
+        this.orderPlacedAt = orderPlacedAt;
         this.items = new ArrayList<>(items);
     }
 
     public static Order reconstruct(OrderId id, CustomerId customerId, RestaurantId restaurantId,
                                     String deliveryAddress, String customerEmail, OrderStatus status,
                                     Money totalAmount, LocalDateTime createDate, LocalDateTime updateDate,
-                                    List<OrderItem> items) {
-        return new Order(id, customerId, restaurantId, deliveryAddress, customerEmail,
-                status, totalAmount, createDate, updateDate, items);
+                                    LocalDateTime orderPlacedAt, List<OrderItem> items) {
+        Order order = new Order(id, customerId, restaurantId, deliveryAddress, customerEmail,
+                status, totalAmount, createDate, updateDate, orderPlacedAt, items);
+        order.validateOrderConsistency();
+        return order;
+    }
+
+    public void placeOrder() {
+        validateOrderInPendingState();
+        validateOrderRules();
+
+        this.status = OrderStatus.PLACED;
+        this.orderPlacedAt = LocalDateTime.now();
+        this.updateDate = LocalDateTime.now();
+
+        validateFrozenOrderState();
     }
 
     public void addItem(MenuItemId menuItemId, String itemName, Quantity quantity, Money unitPrice) {
@@ -103,23 +111,18 @@ public class Order {
             throw new IllegalArgumentException("Item name cannot be blank");
         }
 
-        OrderItem existingItem = items.stream()
-                .filter(item -> item.isSameMenuItem(menuItemId))
-                .findFirst()
-                .orElse(null);
-
+        OrderItem existingItem = findCartItem(menuItemId);
         if (existingItem != null) {
             if (!existingItem.hasSamePrice(unitPrice)) {
                 throw new IllegalArgumentException("Cannot add same menu item with different price");
             }
-            existingItem.increaseQuantity(quantity.getValue());
+            existingItem.increaseQuantity(quantity);
         } else {
-            OrderItem newItem = new OrderItem(menuItemId, itemName, quantity, unitPrice);
+            OrderItem newItem = OrderItem.create(menuItemId, itemName, quantity, unitPrice);
             items.add(newItem);
         }
 
-        recalculateTotal();
-        updateDate = LocalDateTime.now();
+        updateTimestamp();
     }
 
     public void removeItem(MenuItemId menuItemId) {
@@ -131,8 +134,7 @@ public class Order {
 
         boolean removed = items.removeIf(item -> item.getMenuItemId().equals(menuItemId));
         if (removed) {
-            recalculateTotal();
-            updateDate = LocalDateTime.now();
+            updateTimestamp();
         }
     }
 
@@ -149,23 +151,13 @@ public class Order {
                 .orElseThrow(() -> new IllegalArgumentException("Item not found in order"));
 
         item.updateQuantity(newQuantity);
-        recalculateTotal();
-        updateDate = LocalDateTime.now();
-    }
-
-    public void placeOrder() {
-        validateOrderInPendingState();
-        validateOrderRules();
-
-        this.status = OrderStatus.PLACED;
-        this.updateDate = LocalDateTime.now();
+        updateTimestamp();
     }
 
     public void acceptOrder() {
         if (this.status != OrderStatus.PLACED) {
             throw new IllegalStateException("Only PLACED orders can be accepted");
         }
-
         this.status = OrderStatus.ACCEPTED;
         this.updateDate = LocalDateTime.now();
     }
@@ -177,7 +169,6 @@ public class Order {
         if (reason == null || reason.isBlank()) {
             throw new IllegalArgumentException("Rejection reason cannot be null or empty");
         }
-
         this.status = OrderStatus.REJECTED;
         this.updateDate = LocalDateTime.now();
     }
@@ -186,7 +177,6 @@ public class Order {
         if (this.status != OrderStatus.ACCEPTED) {
             throw new IllegalStateException("Only ACCEPTED orders can be marked as ready for pickup");
         }
-
         this.status = OrderStatus.READY_FOR_PICKUP;
         this.updateDate = LocalDateTime.now();
     }
@@ -198,18 +188,31 @@ public class Order {
         if (reason == null || reason.isBlank()) {
             throw new IllegalArgumentException("Cancellation reason cannot be null or empty");
         }
-
         this.status = OrderStatus.CANCELLED;
         this.updateDate = LocalDateTime.now();
+    }
+
+    public Money getTotalAmount() {
+        if (status == OrderStatus.PENDING) {
+            return calculateDynamicTotal();
+        } else {
+            return totalAmount;
+        }
     }
 
     public List<OrderItem> getItems() {
         return Collections.unmodifiableList(items);
     }
 
+    public boolean isPlaced() {
+        return status != OrderStatus.PENDING;
+    }
+
     private void validateOrderInPendingState() {
         if (this.status != OrderStatus.PENDING) {
-            throw new IllegalStateException("Order modifications are only allowed in PENDING state");
+            throw new OrderFrozenException(
+                    "Order modifications are not allowed after order is placed. Current status: " + this.status
+            );
         }
     }
 
@@ -218,7 +221,8 @@ public class Order {
             throw new IllegalStateException("Order must have at least one item");
         }
 
-        if (!totalAmount.isPositive()) {
+        Money calculatedTotal = calculateDynamicTotal();
+        if (!calculatedTotal.isPositive()) {
             throw new IllegalStateException("Order total amount must be positive");
         }
 
@@ -229,10 +233,55 @@ public class Order {
         }
     }
 
-    private void recalculateTotal() {
-        this.totalAmount = items.stream()
+    private void validateFrozenOrderState() {
+        if (orderPlacedAt == null) {
+            throw new IllegalStateException("Order placed timestamp must be set when order is placed");
+        }
+
+        Money calculatedTotal = calculateDynamicTotal();
+        if (!calculatedTotal.equals(totalAmount)) {
+            throw new IllegalStateException("Order total amount is inconsistent with items after placement");
+        }
+    }
+
+    private void validateOrderConsistency() {
+        if (status != OrderStatus.PENDING && orderPlacedAt == null) {
+            throw new IllegalStateException("Non-pending orders must have order placed timestamp");
+        }
+
+        if (status != OrderStatus.PENDING && !totalAmount.equals(calculateDynamicTotal())) {
+            throw new IllegalStateException("Order total amount is inconsistent with items");
+        }
+    }
+
+    private void validateConstructorParameters(OrderId id, CustomerId customerId, RestaurantId restaurantId,
+                                               String deliveryAddress, String customerEmail) {
+        if (id == null || customerId == null || restaurantId == null) {
+            throw new IllegalArgumentException("Order ID, customer ID and restaurant ID cannot be null");
+        }
+        if (deliveryAddress == null || deliveryAddress.isBlank()) {
+            throw new IllegalArgumentException("Delivery address cannot be null or empty");
+        }
+        if (customerEmail == null || customerEmail.isBlank()) {
+            throw new IllegalArgumentException("Customer email cannot be null or empty");
+        }
+    }
+
+    private Money calculateDynamicTotal() {
+        return items.stream()
                 .map(OrderItem::calculateLineTotal)
                 .reduce(Money.ZERO, Money::add);
+    }
+
+    private OrderItem findCartItem(MenuItemId menuItemId) {
+        return items.stream()
+                .filter(item -> item.getMenuItemId().equals(menuItemId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void updateTimestamp() {
+        this.updateDate = LocalDateTime.now();
     }
 
     @Override

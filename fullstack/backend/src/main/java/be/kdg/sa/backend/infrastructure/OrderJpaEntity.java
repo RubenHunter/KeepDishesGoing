@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
 @Entity
 @Table(name = "orders", schema = "ordering")
 @Getter
@@ -53,20 +52,11 @@ public class OrderJpaEntity {
     @Column(name = "update_date", nullable = false)
     private LocalDateTime updateDate;
 
+    @Column(name = "order_placed_at")
+    private LocalDateTime orderPlacedAt;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItemJpaEntity> items = new ArrayList<>();
-
-    public OrderJpaEntity(String id, String customerId, String restaurantId, String deliveryAddress,
-                          String customerEmail, OrderStatus status, BigDecimal totalAmount, String currency) {
-        this.id = id;
-        this.customerId = customerId;
-        this.restaurantId = restaurantId;
-        this.deliveryAddress = deliveryAddress;
-        this.customerEmail = customerEmail;
-        this.status = status;
-        this.totalAmount = totalAmount;
-        this.currency = currency;
-    }
 
     public static OrderJpaEntity fromDomain(Order order) {
         OrderJpaEntity entity = new OrderJpaEntity();
@@ -80,12 +70,8 @@ public class OrderJpaEntity {
         entity.currency = order.getTotalAmount().getCurrency();
         entity.createDate = order.getCreateDate();
         entity.updateDate = order.getUpdateDate();
+        entity.orderPlacedAt = order.getOrderPlacedAt();
         return entity;
-    }
-
-    public void addOrderItem(OrderItemJpaEntity orderItem) {
-        orderItem.setOrder(this);
-        this.items.add(orderItem);
     }
 
     public Order toDomain() {
@@ -103,8 +89,14 @@ public class OrderJpaEntity {
                 Money.of(this.totalAmount, this.currency),
                 this.createDate,
                 this.updateDate,
+                this.orderPlacedAt,
                 domainItems
         );
+    }
+
+    void addOrderItem(OrderItemJpaEntity orderItem) {
+        orderItem.setOrder(this);
+        this.items.add(orderItem);
     }
 
     @Override
@@ -118,20 +110,5 @@ public class OrderJpaEntity {
     @Override
     public int hashCode() {
         return getClass().hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return "OrderJpaEntity{" +
-                "id='" + id + '\'' +
-                ", customerId='" + customerId + '\'' +
-                ", restaurantId='" + restaurantId + '\'' +
-                ", status=" + status +
-                ", totalAmount=" + totalAmount +
-                ", currency='" + currency + '\'' +
-                ", createDate=" + createDate +
-                ", updateDate=" + updateDate +
-                ", itemsCount=" + items.size() +
-                '}';
     }
 }

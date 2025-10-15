@@ -12,13 +12,11 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-
 @Entity
 @Table(name = "order_items", schema = "ordering")
 @Getter
 @NoArgsConstructor
 public class OrderItemJpaEntity {
-
     @Id
     @Column(name = "id", nullable = false)
     private String id;
@@ -56,7 +54,7 @@ public class OrderItemJpaEntity {
     }
 
     public OrderItem toDomain() {
-        return new OrderItem(
+        return OrderItem.create(
                 MenuItemId.of(this.menuItemId),
                 this.itemName,
                 Quantity.of(this.quantity),
@@ -75,17 +73,5 @@ public class OrderItemJpaEntity {
     @Override
     public int hashCode() {
         return getClass().hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return "OrderItemJpaEntity{" +
-                "id='" + id + '\'' +
-                ", menuItemId='" + menuItemId + '\'' +
-                ", itemName='" + itemName + '\'' +
-                ", quantity=" + quantity +
-                ", unitPrice=" + unitPrice +
-                ", currency='" + currency + '\'' +
-                '}';
     }
 }
