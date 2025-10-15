@@ -1,5 +1,6 @@
 package be.kdg.backend.application;
 
+import be.kdg.backend.domain.NotFoundException;
 import be.kdg.backend.domain.restaurant.IRestaurantRepository;
 import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.domain.restaurant.RestaurantId;
@@ -33,14 +34,16 @@ class RestaurantServiceIntegrationTest {
         ArgumentCaptor<Restaurant> captor = ArgumentCaptor.forClass(Restaurant.class);
 
         // Act
-        RestaurantId id = sut.createRestaurant("My Resto");
+        RestaurantId created = sut.createRestaurant("New Resto");
 
         // Assert
         verify(restaurantRepository, times(1)).save(captor.capture());
         Restaurant saved = captor.getValue();
-        assertNotNull(id);
-        assertEquals("My Resto", saved.getName().name());
+        assertNotNull(created);
+        assertNotNull(saved);
+        assertEquals("New Resto", saved.getName().name());
         assertEquals(RestaurantStatus.INACTIVE, saved.getStatus());
+        assertEquals(saved.getId(), created);
     }
 
     @Test
@@ -56,9 +59,9 @@ class RestaurantServiceIntegrationTest {
     }
 
     @Test
-    void shouldGetRestaurantByIdOrThrow() {
+    void shouldGetRestaurantById() {
         // Arrange
-        Restaurant r = Restaurant.create("X");
+        Restaurant r = Restaurant.create("R");
         RestaurantId id = r.getId();
         given(restaurantRepository.getById(id)).willReturn(Optional.of(r));
 
@@ -66,19 +69,24 @@ class RestaurantServiceIntegrationTest {
         Restaurant found = sut.getRestaurantById(id);
 
         // Assert
-        assertEquals(id, found.getId());
-
-        // Arrange
-        given(restaurantRepository.getById(id)).willReturn(Optional.empty());
-
-        // Act & Assert
-        assertThrows(EntityNotFoundException.class, () -> sut.getRestaurantById(id));
+        assertEquals(r, found);
     }
 
     @Test
-    void shouldOpenAndCloseRestaurant() {
+    void shouldThrowWhenRestaurantMissingOnGet() {
         // Arrange
-        Restaurant r = Restaurant.create("Openable");
+        RestaurantId id = RestaurantId.create();
+        given(restaurantRepository.getById(id)).willReturn(Optional.empty());
+
+        // Act
+        // Assert
+        assertThrows(NotFoundException.class, () -> sut.getRestaurantById(id));
+    }
+
+    @Test
+    void shouldOpenRestaurant() {
+        // Arrange
+        Restaurant r = Restaurant.create("R");
         RestaurantId id = r.getId();
         given(restaurantRepository.getById(id)).willReturn(Optional.of(r));
 
@@ -87,12 +95,49 @@ class RestaurantServiceIntegrationTest {
 
         // Assert
         assertEquals(RestaurantStatus.ACTIVE, r.getStatus());
+        verify(restaurantRepository, times(1)).save(r);
+    }
+
+    @Test
+    void openingAlreadyOpenShouldThrow() {
+        // Arrange
+        Restaurant r = Restaurant.create("R");
+        r.open();
+        RestaurantId id = r.getId();
+        given(restaurantRepository.getById(id)).willReturn(Optional.of(r));
+
+        // Act
+        // Assert
+        assertThrows(IllegalStateException.class, () -> sut.openRestaurant(id));
+        verify(restaurantRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldCloseRestaurant() {
+        // Arrange
+        Restaurant r = Restaurant.create("R");
+        r.open();
+        RestaurantId id = r.getId();
+        given(restaurantRepository.getById(id)).willReturn(Optional.of(r));
 
         // Act
         sut.closeRestaurant(id);
 
         // Assert
         assertEquals(RestaurantStatus.INACTIVE, r.getStatus());
-        verify(restaurantRepository, times(2)).save(r);
+        verify(restaurantRepository, times(1)).save(r);
+    }
+
+    @Test
+    void closingAlreadyClosedShouldThrow() {
+        // Arrange
+        Restaurant r = Restaurant.create("R");
+        RestaurantId id = r.getId();
+        given(restaurantRepository.getById(id)).willReturn(Optional.of(r));
+
+        // Act
+        // Assert
+        assertThrows(IllegalStateException.class, () -> sut.closeRestaurant(id));
+        verify(restaurantRepository, never()).save(any());
     }
 }

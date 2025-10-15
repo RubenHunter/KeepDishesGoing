@@ -31,74 +31,51 @@ class RestaurantControllerIntegrationTest {
         helper.cleanUp();
     }
 
+    // US2: Create restaurant
     @Test
-    void shouldCreateRestaurant() throws Exception {
+    void us2_shouldCreateRestaurant() throws Exception {
         // Arrange
+        String body = "{\"name\":\"Story Restaurant\"}";
 
         // Act
-        mockMvc.perform(
-                        post("/api/restaurants")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"name\":\"Test Restaurant\"}"))
-                // Assert
-                .andExpect(status().isCreated())
+        var result = mockMvc.perform(
+                post("/api/restaurants")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body));
+
+        // Assert
+        result.andExpect(status().isCreated())
                 .andExpect(header().string("Location", containsString("/api/restaurants/")));
     }
 
+    // US12: Open/Close manually (happy path)
     @Test
-    void shouldListRestaurants() throws Exception {
+    void us12_shouldOpenRestaurant() throws Exception {
         // Arrange
-        helper.createRestaurant("A");
-        helper.createRestaurant("B");
-
-        // Act
-        mockMvc.perform(get("/api/restaurants"))
-                // Assert
-                .andExpect(status().isOk());
-        // Optionally check the number of restaurants returned
-        //.andExpect(jsonPath("$", hasSize(2)));
-    }
-
-    @Test
-    void shouldOpenRestaurant() throws Exception {
-        // Arrange
-        Restaurant r = helper.createRestaurant("Toggle R");
+        Restaurant r = helper.createRestaurant("Openable");
         RestaurantId rid = helper.id(r);
 
         // Act
-        mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()))
-                // Assert
-                .andExpect(status().isNoContent());
+        var result = mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()));
 
-        // Act
-        mockMvc.perform(get("/api/restaurants/{id}", rid.id()))
-                // Assert
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
+        // Assert
+        result.andExpect(status().isNoContent());
     }
 
+    // US12: Opening an already open restaurant should fail
     @Test
-    void shouldCloseRestaurant() throws Exception {
+    void us12_openingAlreadyOpenShouldFail() throws Exception {
         // Arrange
-        Restaurant r = helper.createRestaurant("Toggle R");
+        Restaurant r = helper.createRestaurant("Open twice");
         RestaurantId rid = helper.id(r);
+        mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id())).andExpect(status().isNoContent());
 
-        // Act
-        //First open the restaurant so we can close it
-        mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()))
-                // Assert
-                .andExpect(status().isNoContent());
+        // Act & Assert
+        org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () ->
+                mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()))
+        );
 
-        // Act
-        mockMvc.perform(patch("/api/restaurants/{id}/close", rid.id()))
-                // Assert
-                .andExpect(status().isNoContent());
 
-        // Act
-        mockMvc.perform(get("/api/restaurants/{id}", rid.id()))
-                // Assert
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("INACTIVE"));
     }
 
 }

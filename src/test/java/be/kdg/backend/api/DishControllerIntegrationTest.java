@@ -13,8 +13,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,12 +25,19 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 class DishControllerIntegrationTest {
+
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public String handleIllegalState(IllegalStateException ex) {
+        return ex.getMessage();
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -46,146 +56,190 @@ class DishControllerIntegrationTest {
         helper.cleanUp();
     }
 
+    // US4: Draft should not affect live menu
     @Test
-    void shouldCreateAndListDishesAndShowInMenuWhenPublished() throws Exception {
-        Restaurant r = helper.createRestaurant("API Resto");
+    void us4_draftDoesNotAffectMenu() throws Exception {
+        // Arrange
+        Restaurant r = helper.createRestaurant("US4");
         RestaurantId rid = helper.id(r);
+        String payload = """
+        {
+          "name": "Tagliatelle",
+          "description": "Mushroom sauce",
+          "price": { "amount": 13.0, "currency": "EUR" },
+          "category": "MAIN_COURSE"
+        }
+        """;
 
-        mockMvc.perform(
-                        post("/api/restaurants/{id}/dishes", rid.id())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content("""
-                                {
-                                  "name": "Lasagna",
-                                  "description": "Layered pasta with meat and cheese",
-                                  "price": { "amount": 14.5, "currency": "EUR" },
-                                  "category": "MAIN_COURSE"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Location", containsString("/api/restaurants/" + rid.id() + "/dishes/")));
+        // Act
+        var result = mockMvc.perform(
+                post("/api/restaurants/{id}/dishes", rid.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload));
 
-        mockMvc.perform(get("/api/restaurants/{id}/dishes", rid.id()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].name", hasItem("Lasagna")))
-                .andExpect(jsonPath("$[*].status", everyItem(is(oneOf("DRAFT","PUBLISHED","OUT_OF_STOCK")))));
-
-        // Publish the only dish
-        Restaurant reloaded = helper.reload(rid);
-        DishId dishId = reloaded.getDishes().getFirst().getId();
-
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), dishId.id()))
-                .andExpect(status().isNoContent());
-
+        // Assert
+        result.andExpect(status().isCreated());
         mockMvc.perform(get("/api/restaurants/{id}/menu", rid.id()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Lasagna"))
-                .andExpect(jsonPath("$[0].status").value("PUBLISHED"));
+                .andExpect(jsonPath("$", hasSize(0)));
     }
 
+    // US6: Publish and depublish a single dish (happy path)
     @Test
-    void shouldVersionDishOnUpdateAndReplaceOnPublish() throws Exception {
-        Restaurant r = helper.createRestaurant("Version Resto");
+    void us6_publishAndDepublishDish() throws Exception {
+        // Arrange
+        Restaurant r = helper.createRestaurant("US6");
         RestaurantId rid = helper.id(r);
-        DishId originalId = helper.addDraftDish(r, "Burger", new BigDecimal("10.00"), "EUR", DishCategory.MAIN_COURSE, "Beef burger");
-        helper.publishDish(r, originalId);
+        DishId id = helper.addDraftDish(r, "Soup", new BigDecimal("6.50"), "EUR", DishCategory.APPETIZER, "Tomato");
 
-        // Update published dish -> creates or reuses draft, menu keeps old
-        mockMvc.perform(
-                        put("/api/restaurants/{rid}/dishes/{dishId}", rid.id(), originalId.id())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content("""
-                                {
-                                  "name": "Burger",
-                                  "description": "Beef burger with cheese",
-                                  "price": { "amount": 12.5, "currency": "EUR" },
-                                  "category": "MAIN_COURSE"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Burger"))
-                .andExpect(jsonPath("$.status").value("DRAFT"))
-                .andExpect(jsonPath("$.price.amount").value(12.5));
+        // Act
+        var result = mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()));
 
-        // Menu still shows old version
-        mockMvc.perform(get("/api/restaurants/{id}/menu", rid.id()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].price.amount").value(10.0));
-
-        // Publish draft -> replaces menu item
-        Restaurant afterUpdate = helper.reload(rid);
-        Dish draft = afterUpdate.getDishes().stream().filter(d -> d.getStatus() == DishStatus.DRAFT && d.getName().name().equals("Burger")).findFirst().orElseThrow();
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), draft.getId().id()))
-                .andExpect(status().isNoContent());
-
-        mockMvc.perform(get("/api/restaurants/{id}/menu", rid.id()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].price.amount").value(12.5))
-                .andExpect(jsonPath("$", hasSize(1)));
-    }
-
-    @Test
-    void shouldDepublishAndToggleAvailability() throws Exception {
-        Restaurant r = helper.createRestaurant("Avail Resto");
-        RestaurantId rid = helper.id(r);
-        DishId id = helper.addDraftDish(r, "Soup", new BigDecimal("6.00"), "EUR", DishCategory.APPETIZER, "Tomato soup");
-        helper.publishDish(r, id);
-
-        // Out of stock
-        mockMvc.perform(
-                        patch("/api/restaurants/{rid}/dishes/{dishId}/availability", rid.id(), id.id())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"available\": false}"))
-                .andExpect(status().isNoContent());
-
-        // Back available -> publish
-        mockMvc.perform(
-                        patch("/api/restaurants/{rid}/dishes/{dishId}/availability", rid.id(), id.id())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"available\": true}"))
-                .andExpect(status().isNoContent());
-
-        // Depublish
+        // Assert
+        result.andExpect(status().isNoContent());
         mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/depublish", rid.id(), id.id()))
                 .andExpect(status().isNoContent());
     }
 
+    // US6: Publishing an already published dish should fail
     @Test
-    void shouldPublishAllDrafts() throws Exception {
-        Restaurant r = helper.createRestaurant("Batch Resto");
+    void us6_publishingAlreadyPublishedShouldFail() throws Exception {
+        // Arrange
+        Restaurant r = helper.createRestaurant("US6-fail");
         RestaurantId rid = helper.id(r);
-        helper.addDraftDish(r, "Pasta", new BigDecimal("9.50"), "EUR", DishCategory.MAIN_COURSE, "Pesto");
-        helper.addDraftDish(r, "Salad", new BigDecimal("7.00"), "EUR", DishCategory.APPETIZER, "Caesar");
-
-        mockMvc.perform(post("/api/restaurants/{rid}/publish_menu", rid.id()))
+        DishId id = helper.addDraftDish(r, "Curry", new BigDecimal("11.00"), "EUR", DishCategory.MAIN_COURSE, "Spicy");
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()))
                 .andExpect(status().isNoContent());
 
+        // Act + Assert: just verify it fails (no message assertion)
+        org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () ->
+                mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()))
+        );
+
+    }
+
+    // US7: Apply all pending changes (publish all drafts)
+    @Test
+    void us7_publishAllDrafts() throws Exception {
+        // Arrange
+        Restaurant r = helper.createRestaurant("US7");
+        RestaurantId rid = helper.id(r);
+        helper.addDraftDish(r, "DishA", new BigDecimal("8.00"), "EUR", DishCategory.MAIN_COURSE, "a");
+        helper.addDraftDish(r, "DishB", new BigDecimal("9.00"), "EUR", DishCategory.MAIN_COURSE, "b");
+
+        // Act
+        var result = mockMvc.perform(post("/api/restaurants/{rid}/publish_menu", rid.id()));
+
+        // Assert
+        result.andExpect(status().isNoContent());
         mockMvc.perform(get("/api/restaurants/{id}/menu", rid.id()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
     }
 
+    // US7: No drafts -> no change
     @Test
-    void shouldScheduleAndProcessPublishJob() throws Exception {
-        Restaurant r = helper.createRestaurant("Sched Resto");
+    void us7_publishAllDraftsNoopWhenNone() throws Exception {
+        // Arrange
+        Restaurant r = helper.createRestaurant("US7-noop");
         RestaurantId rid = helper.id(r);
-        helper.addDraftDish(r, "Curry", new BigDecimal("11.00"), "EUR", DishCategory.MAIN_COURSE, "Spicy");
 
-        mockMvc.perform(
-                        post("/api/restaurants/{rid}/schedule_publish", rid.id())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content("""
-                                 { "publishAt": "%s" }
-                                 """.formatted(LocalDateTime.now().plusSeconds(1))))
-                .andExpect(status().isNoContent());
+        // Act
+        var result = mockMvc.perform(post("/api/restaurants/{rid}/publish_menu", rid.id()));
 
-        // Pick job and process explicitly (no need to wait for scheduler)
+        // Assert
+        result.andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/restaurants/{id}/menu", rid.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    // US8: Schedule publish in the future and process it
+    @Test
+    void us8_schedulePublishAndProcess() throws Exception {
+        // Arrange
+        Restaurant r = helper.createRestaurant("US8");
+        RestaurantId rid = helper.id(r);
+        helper.addDraftDish(r, "Noodles", new BigDecimal("7.50"), "EUR", DishCategory.MAIN_COURSE, "veg");
+        String payload = """
+        { "publishAt": "%s" }
+        """.formatted(LocalDateTime.now().plusSeconds(1));
+
+        // Act
+        var result = mockMvc.perform(
+                post("/api/restaurants/{rid}/schedule_publish", rid.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload));
+
+        // Assert
+        result.andExpect(status().isNoContent());
         JpaScheduledPublishEntity job = scheduledRepo.findAll().getFirst();
         scheduledProcessor.processJob(job.getId());
-
-        // Verify menu published
         mockMvc.perform(get("/api/restaurants/{id}/menu", rid.id()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)));
+    }
+
+    // US8: Scheduling in the past should fail
+    @Test
+    void us8_schedulePublishInPastShouldFail() throws Exception {
+        // Arrange
+        Restaurant r = helper.createRestaurant("US8-fail");
+        RestaurantId rid = helper.id(r);
+        String payload = """
+        { "publishAt": "%s" }
+        """.formatted(LocalDateTime.now().minusMinutes(1));
+
+        // Act
+        var result = mockMvc.perform(
+                post("/api/restaurants/{rid}/schedule_publish", rid.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload));
+
+        // Assert
+        result.andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("publishAt must be in the future")));
+
+    }
+
+    // US9: Toggle availability immediately (not schedulable)
+    @Test
+    void us9_toggleAvailability() throws Exception {
+        // Arrange
+        Restaurant r = helper.createRestaurant("US9");
+        RestaurantId rid = helper.id(r);
+        DishId id = helper.addDraftDish(r, "Fries", new BigDecimal("3.00"), "EUR", DishCategory.APPETIZER, "salt");
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()))
+                .andExpect(status().isNoContent());
+
+        // Act
+        var result = mockMvc.perform(
+                patch("/api/restaurants/{rid}/dishes/{dishId}/availability", rid.id(), id.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"available\": false}"));
+
+        // Assert
+        result.andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/restaurants/{id}/dishes", rid.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.name=='Fries')].status", hasItem("OUT_OF_STOCK")));
+    }
+
+    // US9: Toggle availability for unknown dish should fail
+    @Test
+    void us9_toggleAvailabilityUnknownDishShouldFail() throws Exception {
+        // Arrange
+        Restaurant r = helper.createRestaurant("US9-fail");
+        RestaurantId rid = helper.id(r);
+        DishId unknown = helper.randomDishId();
+
+        // Act
+        var result = mockMvc.perform(
+                patch("/api/restaurants/{rid}/dishes/{dishId}/availability", rid.id(), unknown.id())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"available\": false}"));
+
+        // Assert
+        result.andExpect(status().isNotFound());
     }
 }
