@@ -29,7 +29,7 @@ public class Order {
     @Getter
     private OrderStatus status;
 
-    private final Money totalAmount;
+    private Money totalAmount; // ✅ Veranderd naar niet-final
 
     @Getter
     private final LocalDateTime createDate;
@@ -44,7 +44,7 @@ public class Order {
     private final String customerEmail;
 
     @Getter
-    private LocalDateTime orderPlacedAt;
+    private LocalDateTime orderPlacedAt; // ✅ Veranderd naar niet-final
 
     public Order(OrderId id, CustomerId customerId, RestaurantId restaurantId,
                  String deliveryAddress, String customerEmail) {
@@ -94,6 +94,8 @@ public class Order {
         validateOrderInPendingState();
         validateOrderRules();
 
+        // ✅ BEVRIES INHOUD EN PRIJS - sla het huidige totaal op
+        this.totalAmount = calculateDynamicTotal();
         this.status = OrderStatus.PLACED;
         this.orderPlacedAt = LocalDateTime.now();
         this.updateDate = LocalDateTime.now();
@@ -238,9 +240,14 @@ public class Order {
             throw new IllegalStateException("Order placed timestamp must be set when order is placed");
         }
 
+        // ✅ CORRECTIE: Vergelijk met de opgeslagen totalAmount, niet met dynamische berekening
         Money calculatedTotal = calculateDynamicTotal();
         if (!calculatedTotal.equals(totalAmount)) {
-            throw new IllegalStateException("Order total amount is inconsistent with items after placement");
+            throw new IllegalStateException(
+                    String.format("Order total amount is inconsistent with items after placement. Calculated: %.2f %s, Stored: %.2f %s",
+                            calculatedTotal.getAmount().doubleValue(), calculatedTotal.getCurrency(),
+                            totalAmount.getAmount().doubleValue(), totalAmount.getCurrency())
+            );
         }
     }
 
