@@ -1,0 +1,81 @@
+### Order Service - Create a test order first
+POST http://localhost:8082/api/orders
+Content-Type: application/json
+
+{
+  "customerId": "CUST-TEST-123",
+  "restaurantId": "a6a52c73-9070-4128-a988-255383b941bc",
+  "deliveryAddress": "Teststraat 123, 2000 Antwerpen",
+  "customerEmail": "test@example.com",
+  "items": [
+    {
+      "menuItemId": "4ac746dc-7943-479e-b3ee-d158b9f15260",
+      "itemName": "Lasagna",
+      "quantity": 2,
+      "unitPrice": 14.5
+    }
+  ]
+}
+
+> {%
+    client.global.set("orderId", response.body.orderId);
+    client.log("Created order: " + response.body.orderId);
+%}
+
+### Validate order before checkout (should succeed)
+POST http://localhost:8082/api/orders/{{orderId}}/validate
+
+### Place order with validation (should succeed)
+POST http://localhost:8082/api/orders/{{orderId}}/place-validated
+
+### Test 2: Create order with wrong price
+POST http://localhost:8082/api/orders
+Content-Type: application/json
+
+{
+  "customerId": "CUST-TEST-456",
+  "restaurantId": "a6a52c73-9070-4128-a988-255383b941bc",
+  "deliveryAddress": "Teststraat 456, 2000 Antwerpen",
+  "customerEmail": "test2@example.com",
+  "items": [
+    {
+      "menuItemId": "4ac746dc-7943-479e-b3ee-d158b9f15260",
+      "itemName": "Lasagna",
+      "quantity": 1,
+      "unitPrice": 10.0
+    }
+  ]
+}
+
+> {%
+    client.global.set("orderIdWrongPrice", response.body.orderId);
+%}
+
+### Validate order with wrong price (should fail)
+POST http://localhost:8082/api/orders/{{orderIdWrongPrice}}/validate
+
+### Test 3: Create order with unavailable dish
+POST http://localhost:8082/api/orders
+Content-Type: application/json
+
+{
+  "customerId": "CUST-TEST-789",
+  "restaurantId": "a6a52c73-9070-4128-a988-255383b941bc",
+  "deliveryAddress": "Teststraat 789, 2000 Antwerpen",
+  "customerEmail": "test3@example.com",
+  "items": [
+    {
+      "menuItemId": "00000000-0000-0000-0000-000000000000",
+      "itemName": "Non-existent Dish",
+      "quantity": 1,
+      "unitPrice": 15.0
+    }
+  ]
+}
+
+> {%
+    client.global.set("orderIdInvalidDish", response.body.orderId);
+%}
+
+### Validate order with invalid dish (should fail)
+POST http://localhost:8082/api/orders/{{orderIdInvalidDish}}/validate

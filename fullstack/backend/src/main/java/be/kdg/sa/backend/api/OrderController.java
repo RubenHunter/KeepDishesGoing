@@ -1,7 +1,9 @@
 package be.kdg.sa.backend.api;
 
+import be.kdg.sa.backend.api.dto.ValidationResponse;
 import be.kdg.sa.backend.application.OrderApplicationService;
 import be.kdg.sa.backend.application.CreateOrderCommand;
+import be.kdg.sa.backend.application.OrderValidationService;
 import be.kdg.sa.backend.domain.Order.Order;
 import be.kdg.sa.backend.domain.Order.OrderId;
 import be.kdg.sa.backend.domain.Order.OrderItem;
@@ -17,6 +19,18 @@ import java.net.URI;
 @RequiredArgsConstructor
 public class OrderController {
     private final OrderApplicationService orderService;
+
+    @PostMapping("/{orderId}/validate")
+    public ResponseEntity<ValidationResponse> validateOrder(@PathVariable String orderId) {
+        OrderValidationService.ValidationResult result =
+                orderService.validateOrderBeforeCheckout(OrderId.of(orderId));
+
+        return ResponseEntity.ok(new ValidationResponse(
+                result.isValid(),
+                result.message(),
+                orderId
+        ));
+    }
 
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody CreateOrderRequest request) {
@@ -53,7 +67,13 @@ public class OrderController {
         ));
     }
 
-    // ✅ ENDPOINT: Check of order gewijzigd kan worden
+    @PostMapping("/{orderId}/place-validated")
+    public ResponseEntity<OrderResponse> placeOrderWithValidation(@PathVariable String orderId) {
+        OrderResponse response = orderService.placeOrderWithValidation(OrderId.of(orderId));
+        return ResponseEntity.ok(response);
+    }
+
+    //Check of order gewijzigd kan worden
     @GetMapping("/{orderId}/modifiable")
     public ResponseEntity<OrderModifiableResponse> canModifyOrder(@PathVariable String orderId) {
         boolean canModify = orderService.canModifyOrder(OrderId.of(orderId));

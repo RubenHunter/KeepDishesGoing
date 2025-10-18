@@ -1,5 +1,6 @@
 package be.kdg.sa.backend.application;
 
+import be.kdg.sa.backend.api.OrderController;
 import be.kdg.sa.backend.domain.Order.*;
 import be.kdg.sa.backend.domain.OrderRepository;
 import be.kdg.sa.backend.domain.Shared.Money;
@@ -17,7 +18,44 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class OrderApplicationService {
     private final OrderRepository orderRepository;
+    private final OrderValidationService orderValidationService;
 
+    public OrderValidationService.ValidationResult validateOrderBeforeCheckout(OrderId orderId) {
+        log.info("Validating order {} before checkout", orderId.getValue());
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId.getValue()));
+
+        return orderValidationService.validateOrderBeforeCheckout(order);
+    }
+
+    public OrderController.OrderResponse placeOrderWithValidation(OrderId orderId) {
+        log.info("Placing order with validation: {}", orderId.getValue());
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId.getValue()));
+
+        // Valideer voor plaatsing
+        OrderValidationService.ValidationResult validation =
+                orderValidationService.validateOrderBeforeCheckout(order);
+
+        if (!validation.isValid()) {
+            log.warn("Order validation failed for {}: {}", orderId.getValue(), validation.message());
+            throw new OrderValidationException("Order validation failed: " + validation.message());
+        }
+
+        // Plaats order als validatie slaagt
+        order.placeOrder();
+        Order savedOrder = orderRepository.save(order);
+
+        log.info("Order placed successfully after validation: {}", orderId.getValue());
+
+        return new OrderController.OrderResponse(
+                savedOrder.getId().getValue(),
+                "Order placed successfully after validation",
+                savedOrder.getStatus().name()
+        );
+    }
     public OrderId createOrder(CreateOrderCommand command) {
         log.info("Creating order for customer: {}, restaurant: {}",
                 command.customerId(), command.restaurantId());
