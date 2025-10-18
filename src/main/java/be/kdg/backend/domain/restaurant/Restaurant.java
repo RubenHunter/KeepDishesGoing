@@ -10,6 +10,7 @@ import org.jmolecules.ddd.annotation.Identity;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Getter
 @AllArgsConstructor
@@ -21,18 +22,16 @@ public class Restaurant {
     private final RestaurantId id;
     private final RestaurantName name;
     private RestaurantStatus status;
-    //private Address address;
     private List<Dish> dishes;
+    private UUID ownerId;
 
-    /*
-    Constructor en getters zijn al gegenereerd door Lombok annotaties
-    public Restaurant(final RestaurantId id, final RestaurantName name, final RestaurantStatus status, final List<Dish> dishes) {
+    public Restaurant(RestaurantId id, RestaurantName name, RestaurantStatus status, List<Dish> dishes) {
         this.id = id;
         this.name = name;
         this.status = status;
         this.dishes = dishes;
+        this.ownerId = null;
     }
-    */
 
     // Static factory to enforce domain creation rules
     public static Restaurant create(String name) {
@@ -43,8 +42,15 @@ public class Restaurant {
                 RestaurantId.create(),
                 new RestaurantName(name),
                 RestaurantStatus.INACTIVE,
-                new ArrayList<>()
+                new ArrayList<>(),
+                null
         );
+    }
+
+    public static Restaurant create(String name, UUID ownerId) {
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("Restaurant name must not be blank");
+        if (ownerId == null) throw new IllegalArgumentException("ownerId must not be null");
+        return new Restaurant(RestaurantId.create(), new RestaurantName(name), RestaurantStatus.INACTIVE, new ArrayList<>(), ownerId);
     }
 
     public void open() {

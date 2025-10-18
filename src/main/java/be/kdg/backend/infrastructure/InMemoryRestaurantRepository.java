@@ -15,10 +15,7 @@ import be.kdg.backend.domain.restaurant.RestaurantStatus;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
@@ -115,5 +112,10 @@ public class InMemoryRestaurantRepository implements IRestaurantRepository {
         return data.values().stream()
                 .filter(r -> r.getDishes().stream().anyMatch(d -> d.getId().equals(dishId)))
                 .findFirst();
+    }
+
+    @Override
+    public Optional<UUID> getOwnerId(RestaurantId id) {
+        return Optional.empty();
     }
 }

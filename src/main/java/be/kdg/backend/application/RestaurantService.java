@@ -7,10 +7,7 @@ import be.kdg.backend.domain.restaurant.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @Transactional
@@ -30,6 +27,12 @@ public class RestaurantService {
     public RestaurantId createRestaurant(final String name) {
         Restaurant restaurant = Restaurant.create(name);
         //static create method domein regels in Restaurant domain
+        restaurantRepository.save(restaurant);
+        return restaurant.getId();
+    }
+    // Overload voor createRestaurant met ownerId
+    public RestaurantId createRestaurant(final String name, UUID ownerId) { // new
+        Restaurant restaurant = Restaurant.create(name, ownerId);
         restaurantRepository.save(restaurant);
         return restaurant.getId();
     }

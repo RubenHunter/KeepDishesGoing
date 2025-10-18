@@ -11,6 +11,8 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -35,9 +37,9 @@ public class RestaurantController {
     get, public, resp: List<RestaurantDto>
     */
     @PostMapping({"", "/"})
-    public ResponseEntity<Void> createRestaurant(@Valid @RequestBody CreateRestaurantDto dto) {
-        RestaurantId createdId = restaurantService.createRestaurant(dto.name());
-
+    public ResponseEntity<Void> createRestaurant(@Valid @RequestBody CreateRestaurantDto dto, JwtAuthenticationToken jwt) {
+        UUID ownerId = UUID.fromString(jwt.getToken().getSubject());
+        RestaurantId createdId = restaurantService.createRestaurant(dto.name(), ownerId);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(createdId.id())
@@ -75,6 +77,7 @@ public class RestaurantController {
      */
     @PatchMapping("/{id}/open")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("@ownerGuard.canManageRestaurant(#id)")
     public ResponseEntity<Void> openRestaurant(@PathVariable final UUID id) {
         final RestaurantId restaurantId = new RestaurantId(id);
         restaurantService.openRestaurant(restaurantId);
@@ -88,6 +91,7 @@ public class RestaurantController {
      */
     @PatchMapping("/{id}/close")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("@ownerGuard.canManageRestaurant(#id)")
     public ResponseEntity<Void> closeRestaurant(@PathVariable final UUID id) {
         final RestaurantId restaurantId = new RestaurantId(id);
         restaurantService.closeRestaurant(restaurantId);

@@ -1,0 +1,166 @@
+
+### Environment
+@server = http://localhost:8080
+@kc = http://localhost:8180
+@realm = keepdishesgoing
+
+### Get token (owner: ruben)
+POST {{kc}}/realms/{{realm}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=restaurant-service&client_secret=CpEGRlmWE7PvFwuMXTLsJoOT8Gxbdqk1&username=ruben&password=ruben&grant_type=password&scope=openid
+
+> {% client.global.set("owner_token", response.body.access_token || JSON.parse(response.body).access_token); %}
+
+### Get token (user: user)
+POST {{kc}}/realms/{{realm}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=restaurant-service&client_secret=CpEGRlmWE7PvFwuMXTLsJoOT8Gxbdqk1&username=user&password=user&grant_type=password&scope=openid
+
+> {% client.global.set("user_token", response.body.access_token || JSON.parse(response.body).access_token); %}
+
+
+### Create restaurant (captures {{rid}} from Location)
+POST {{server}}/api/restaurants
+Authorization: Bearer {{owner_token}}
+Content-Type: application/json
+
+{
+  "name": "Story Restaurant"
+}
+> {%
+    const loc = response.headers.valueOf("Location");
+    if (loc) {
+        client.global.set("rid", loc.split("/").pop());
+    } else {
+        client.log("Location header missing");
+    }
+%}
+
+### Verify created restaurant
+GET {{server}}/api/restaurants
+
+### Verify created restaurant
+GET {{server}}/api/restaurants/{{rid}}
+
+### Open restaurant
+PATCH {{server}}/api/restaurants/{{rid}}/open
+Authorization: Bearer {{owner_token}}
+
+### Verify status became ACTIVE
+GET {{server}}/api/restaurants/{{rid}}
+
+### OWNER FLOW ─ read-only endpoints still work
+### Get restaurant by id
+GET {{server}}/api/restaurants/{{rid}}
+
+
+
+### OWNER FLOW ─ create draft dish
+POST {{server}}/api/restaurants/{{rid}}/dishes
+Authorization: Bearer {{owner_token}}
+Content-Type: application/json
+
+{
+  "name": "Fries",
+  "description": "Salted",
+  "price": { "amount": 3.00, "currency": "EUR" },
+  "category": "APPETIZER"
+}
+
+### OWNER FLOW ─ list dishes and capture Fries id
+GET {{server}}/api/restaurants/{{rid}}/dishes
+Authorization: Bearer {{owner_token}}
+
+> {%
+  let list = [];
+  try {
+    list = JSON.parse(response.body);
+  } catch (e) {
+    client.log("JSON parse error: " + e);
+  }
+  const found = Array.isArray(list) ? list.find(d => d && d.name === "Fries") : null;
+  client.global.set("dishId", found && found.id ? String(found.id) : "");
+%}
+
+### OWNER FLOW ─ publish dish
+PATCH {{server}}/api/restaurants/{{rid}}/dishes/{{dishId}}/publish
+Authorization: Bearer {{owner_token}}
+
+### OWNER FLOW - verify dish is published
+GET {{server}}/api/restaurants/{{rid}}/menu
+
+### OWNER FLOW ─ set availability to false
+PATCH {{server}}/api/restaurants/{{rid}}/dishes/{{dishId}}/availability
+Authorization: Bearer {{owner_token}}
+Content-Type: application/json
+
+{ "available": false }
+
+### List all dishes of restaurant
+GET {{server}}/api/restaurants/{{rid}}/dishes
+
+### Get published menu
+GET {{server}}/api/restaurants/{{rid}}/menu
+
+### OWNER FLOW ─ add another draft dish (for scheduled publish demo)
+POST {{server}}/api/restaurants/{{rid}}/dishes
+Authorization: Bearer {{owner_token}}
+Content-Type: application/json
+
+{
+  "name": "Noodles",
+  "description": "Veg",
+  "price": { "amount": 7.50, "currency": "EUR" },
+  "category": "MAIN_COURSE"
+}
+
+### OWNER FLOW ─ schedule publish all drafts (use a future timestamp)
+POST {{server}}/api/restaurants/{{rid}}/schedule_publish
+Authorization: Bearer {{owner_token}}
+Content-Type: application/json
+
+{ "publishAt": "2099-12-31T23:59:59" }
+
+### OWNER FLOW ─ read-only endpoints still work
+GET {{server}}/api/restaurants/{{rid}}
+###
+GET {{server}}/api/restaurants/{{rid}}/dishes
+###
+GET {{server}}/api/restaurants/{{rid}}/menu
+
+### USER FLOW ─ can list restaurants (public GET)
+GET {{server}}/api/restaurants
+
+### USER FLOW ─ can GET a restaurant
+GET {{server}}/api/restaurants/{{rid}}
+Authorization: Bearer {{user_token}}
+
+### USER FLOW ─ can GET dishes
+GET {{server}}/api/restaurants/{{rid}}/dishes
+Authorization: Bearer {{user_token}}
+
+### USER FLOW ─ can GET menu
+GET {{server}}/api/restaurants/{{rid}}/menu
+Authorization: Bearer {{user_token}}
+
+### USER FLOW ─ cannot mutate (expect 403)
+PATCH {{server}}/api/restaurants/{{rid}}/close
+Authorization: Bearer {{user_token}}
+
+### USER FLOW ─ cannot create dishes (expect 403)
+POST {{server}}/api/restaurants/{{rid}}/dishes
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "name": "ShouldFail",
+  "description": "Nope",
+  "price": { "amount": 5.00, "currency": "EUR" },
+  "category": "APPETIZER"
+}
+
+### USER FLOW ─ cannot publish (expect 403; random UUID)
+PATCH {{server}}/api/restaurants/{{rid}}/dishes/00000000-0000-0000-0000-000000000000/publish
+Authorization: Bearer {{user_token}}

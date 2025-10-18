@@ -4,6 +4,7 @@ import be.kdg.backend.domain.dish.DishId;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface IRestaurantRepository {
     void save(Restaurant restaurant);
@@ -13,4 +14,7 @@ public interface IRestaurantRepository {
     List<Restaurant> getAll();
 
     Optional<Restaurant> findByDishId(DishId dishId);
+
+    // New: lightweight owner lookup (avoids initializing lazy relations)
+    Optional<UUID> getOwnerId(RestaurantId id);
 }

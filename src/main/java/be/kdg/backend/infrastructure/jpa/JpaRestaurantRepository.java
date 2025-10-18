@@ -1,6 +1,8 @@
 package be.kdg.backend.infrastructure.jpa;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -9,4 +11,7 @@ public interface JpaRestaurantRepository extends JpaRepository<JpaRestaurantEnti
 
     Optional<JpaRestaurantEntity> findByDishes_Id(UUID dishId);
 
+    // New: fetch only ownerId to avoid touching lazy collections
+    @Query("select r.ownerId from JpaRestaurantEntity r where r.id = :id")
+    Optional<UUID> findOwnerIdById(@Param("id") UUID id);
 }

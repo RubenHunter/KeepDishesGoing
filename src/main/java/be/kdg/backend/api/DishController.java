@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -34,6 +35,7 @@ public class DishController {
      get, owner, resp: List<DishDto>
     */
     @PostMapping("/restaurants/{id}/dishes")
+    @PreAuthorize("@ownerGuard.canManageRestaurant(#id)")
     public ResponseEntity<Void> createDish(@Valid @RequestBody CreateDishDto dto, @PathVariable final UUID id) {
         final RestaurantId restaurantId = new RestaurantId(id);
 
@@ -91,6 +93,7 @@ public class DishController {
      put, owner, req: UpdateDishDto, resp: DishDto
     */
     @PutMapping("/restaurants/{restaurantId}/dishes/{dishId}")
+    @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
     public ResponseEntity<DishDto> updateDish(@Valid @RequestBody UpdateDishDto dto, @PathVariable final UUID restaurantId, @PathVariable final UUID dishId) {
         log.info("Updating dish with id {} from restaurant with id {}: {}", dishId, restaurantId, dto);
         DishDto updated = dishService.updateDraftDish(new RestaurantId(restaurantId), new DishId(dishId), dto);
@@ -103,6 +106,7 @@ public class DishController {
     */
     @PatchMapping("/restaurants/{restaurantId}/dishes/{dishId}/publish")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
     public void publishDish(@PathVariable final UUID restaurantId, @PathVariable final UUID dishId) {
         log.info("Publishing dish with id {} from restaurant with id {}", dishId, restaurantId);
         dishService.publishDish(new RestaurantId(restaurantId), new DishId(dishId));
@@ -114,6 +118,7 @@ public class DishController {
      */
     @PatchMapping("/restaurants/{restaurantId}/dishes/{dishId}/depublish")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
     public void dePublishDish(@PathVariable final UUID restaurantId, @PathVariable final UUID dishId) {
         log.info("Depublishing dish with id {} from restaurant with id {}", dishId, restaurantId);
         dishService.dePublishDish(new RestaurantId(restaurantId), new DishId(dishId));
@@ -125,6 +130,7 @@ public class DishController {
      */
     @PatchMapping("/restaurants/{restaurantId}/dishes/{dishId}/availability")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
     public void setDishAvailability(
             @PathVariable final UUID restaurantId,
             @PathVariable final UUID dishId,
@@ -142,6 +148,7 @@ public class DishController {
      */
     @PostMapping("/restaurants/{restaurantId}/publish_menu")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
     public void publishMenu(@PathVariable final UUID restaurantId) {
         log.info("Publishing all draft dishes for restaurant {}", restaurantId);
         dishService.publishAllDraftDishes(new RestaurantId(restaurantId));
@@ -155,6 +162,7 @@ public class DishController {
 
     @PostMapping("/restaurants/{restaurantId}/schedule_publish")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
     public void schedulePublish(
             @PathVariable final UUID restaurantId,
             @RequestBody SchedulePublishDto dto) {

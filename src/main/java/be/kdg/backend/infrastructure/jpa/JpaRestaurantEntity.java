@@ -6,7 +6,6 @@ import be.kdg.backend.domain.restaurant.RestaurantId;
 import be.kdg.backend.domain.restaurant.RestaurantName;
 import be.kdg.backend.domain.restaurant.RestaurantStatus;
 import jakarta.persistence.*;
-import lombok.Getter;
 import lombok.Setter;
 
 import java.util.*;
@@ -26,6 +25,9 @@ public class JpaRestaurantEntity {
     @Enumerated(value = EnumType.STRING)
     @Column(nullable = false)
     private RestaurantStatus status;
+
+    @Column(name = "owner_id")
+    private UUID ownerId;
 
     @Setter
     @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -62,6 +64,7 @@ public class JpaRestaurantEntity {
         e.id = r.getId().id();
         e.name = r.getName().name();
         e.status = r.getStatus();
+        e.ownerId = r.getOwnerId();
         for (Dish d : r.getDishes()) {
             JpaDishEntity child = JpaDishEntity.fromDomain(d, e);
             e.addDish(child);
@@ -80,13 +83,15 @@ public class JpaRestaurantEntity {
                 new RestaurantId(this.id),
                 new RestaurantName(this.name),
                 this.status,
-                domainDishes
+                domainDishes,
+                this.ownerId
         );
     }
 
     public void applyFromDomain(Restaurant r) {
         this.name = r.getName().toString();
         this.status = r.getStatus();
+        this.ownerId = r.getOwnerId();
 
         Map<UUID, JpaDishEntity> current = this.dishes.stream()
                 .collect(Collectors.toMap(JpaDishEntity::getId, Function.identity()));
