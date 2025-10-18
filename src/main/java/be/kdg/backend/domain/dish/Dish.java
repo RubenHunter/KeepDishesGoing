@@ -1,6 +1,7 @@
 package be.kdg.backend.domain.dish;
 
 import be.kdg.backend.domain.Price;
+import be.kdg.backend.domain.ValidationException;
 import lombok.*;
 import org.jmolecules.ddd.annotation.Entity;
 import org.jmolecules.ddd.annotation.Identity;
@@ -21,10 +22,10 @@ public class Dish {
     // Static factory to enforce domain creation rules
     public static Dish createDraft(DishName name, Description description, Price price, DishCategory category) {
         if (name == null) {
-            throw new IllegalArgumentException("Dish name must not be null");
+            throw new ValidationException("Dish name must not be null");
         }
         if (price == null) {
-            throw new IllegalArgumentException("Price must not be null");
+            throw new ValidationException("Price must not be null");
         }
         validatePriceStatic(price);
 
@@ -45,7 +46,7 @@ public class Dish {
     //publish() -> validation: Price must be positive, Dish cannot be empty
     public void publish() {
         if (this.status == DishStatus.PUBLISHED) {
-            throw new IllegalStateException("Dish is already published");
+            throw new ValidationException("Dish is already published");
         }
         /*
         if (this.status == DishStatus.OUT_OF_STOCK) {
@@ -89,14 +90,14 @@ public class Dish {
     //validatePrice(Price price)
     private void validatePrice(Price price) {
         if (!price.isPositive(price.amount())) {
-            throw new IllegalArgumentException("Price must be positive");
+            throw new ValidationException("Price must be positive");
         }
     }
 
     //Static version for the static create factory
     private static void validatePriceStatic(Price price) {
         if (!price.isPositive(price.amount())) {
-            throw new IllegalArgumentException("Price must be positive");
+            throw new ValidationException("Price must be positive");
         }
     }
 }

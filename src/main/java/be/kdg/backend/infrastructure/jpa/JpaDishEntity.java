@@ -18,7 +18,6 @@ public class JpaDishEntity {
     private UUID id;
 
     @Getter
-    @Setter
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "restaurant_id", nullable = false)
     private JpaRestaurantEntity restaurant;

@@ -2,7 +2,6 @@ package be.kdg.backend.api;
 
 import be.kdg.backend.TestHelper;
 import be.kdg.backend.application.ScheduledPublishProcessor;
-import be.kdg.backend.domain.Price;
 import be.kdg.backend.domain.dish.*;
 import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.domain.restaurant.RestaurantId;
@@ -13,31 +12,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
-
 import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 class DishControllerIntegrationTest {
-
-    @ExceptionHandler(IllegalStateException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public String handleIllegalState(IllegalStateException ex) {
-        return ex.getMessage();
-    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -111,10 +96,11 @@ class DishControllerIntegrationTest {
         mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()))
                 .andExpect(status().isNoContent());
 
-        // Act + Assert: just verify it fails (no message assertion)
-        org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () ->
-                mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()))
-        );
+        //Act + Assert
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("CONFLICT"))
+                .andExpect(jsonPath("$.message", containsString("already published")));
 
     }
 

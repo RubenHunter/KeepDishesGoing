@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -52,14 +53,17 @@ class RestaurantControllerIntegrationTest {
     @Test
     void us12_shouldOpenRestaurant() throws Exception {
         // Arrange
-        Restaurant r = helper.createRestaurant("Openable");
-        RestaurantId rid = helper.id(r);
+        var r = helper.createRestaurant("US12-open");
+        var rid = helper.id(r);
 
         // Act
-        var result = mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()));
+        mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()))
+                .andExpect(status().isNoContent());
 
-        // Assert
-        result.andExpect(status().isNoContent());
+        // Assert: verify state changed
+        mockMvc.perform(get("/api/restaurants/{id}", rid.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     // US12: Opening an already open restaurant should fail
@@ -71,11 +75,12 @@ class RestaurantControllerIntegrationTest {
         mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id())).andExpect(status().isNoContent());
 
         // Act & Assert
-        org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () ->
-                mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()))
-        );
 
-
+        // Act & Assert
+        mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("CONFLICT"))
+                .andExpect(jsonPath("$.message", containsString("already open")));
     }
 
 }

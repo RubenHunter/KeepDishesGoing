@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 @Table(name = "restaurants")
 public class JpaRestaurantEntity {
 
-    @Getter
     @Id
     private UUID id;
 
@@ -28,7 +27,6 @@ public class JpaRestaurantEntity {
     @Column(nullable = false)
     private RestaurantStatus status;
 
-    @Getter
     @Setter
     @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<JpaDishEntity> dishes = new ArrayList<>();

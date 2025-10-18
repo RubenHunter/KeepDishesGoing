@@ -32,7 +32,7 @@ class RestaurantTest {
     }
 
     @Test
-    void open_close_transitionsAndGuards() {
+    void open_shouldActivate() {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
 
@@ -41,16 +41,19 @@ class RestaurantTest {
 
         // Assert
         assertEquals(RestaurantStatus.ACTIVE, r.getStatus());
+    }
 
+    @Test
+    void close_shouldDeactivate() {
         // Arrange
+        Restaurant r = Restaurant.create("Resto");
+        r.open();
+
         // Act
         r.close();
 
         // Assert
         assertEquals(RestaurantStatus.INACTIVE, r.getStatus());
-        assertThrows(IllegalStateException.class, r::close);
-        r.open();
-        assertThrows(IllegalStateException.class, r::open);
     }
 
     @Test
@@ -150,10 +153,10 @@ class RestaurantTest {
     }
 
     @Test
-    void dePublish_and_markOutOfStock() {
+    void depublish_shouldMoveToDraft() {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
-        DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, eur("4.00"));
+        DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, new Price(new BigDecimal("4.00"), "EUR"));
         r.publishDish(id);
 
         // Act
@@ -161,8 +164,13 @@ class RestaurantTest {
 
         // Assert
         assertEquals(DishStatus.DRAFT, r.getDishById(id).getStatus());
+    }
 
+    @Test
+    void markOutOfStock_shouldSetOutOfStock() {
         // Arrange
+        Restaurant r = Restaurant.create("Resto");
+        DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, new Price(new BigDecimal("4.00"), "EUR"));
         r.publishDish(id);
 
         // Act
@@ -207,6 +215,6 @@ class RestaurantTest {
         r.publishDish(id);
 
         // Act + Assert
-        assertThrows(IllegalStateException.class, () -> r.publishDish(id));
+        assertThrows(DomainConflictException.class, () -> r.publishDish(id));
     }
 }

@@ -1,5 +1,6 @@
 package be.kdg.backend.application;
 
+import be.kdg.backend.domain.DomainConflictException;
 import be.kdg.backend.domain.NotFoundException;
 import be.kdg.backend.domain.restaurant.IRestaurantRepository;
 import be.kdg.backend.domain.restaurant.Restaurant;
@@ -108,7 +109,7 @@ class RestaurantServiceIntegrationTest {
 
         // Act
         // Assert
-        assertThrows(IllegalStateException.class, () -> sut.openRestaurant(id));
+        assertThrows(DomainConflictException.class, () -> sut.openRestaurant(id));
         verify(restaurantRepository, never()).save(any());
     }
 
@@ -137,7 +138,7 @@ class RestaurantServiceIntegrationTest {
 
         // Act
         // Assert
-        assertThrows(IllegalStateException.class, () -> sut.closeRestaurant(id));
+        assertThrows(DomainConflictException.class, () -> sut.closeRestaurant(id));
         verify(restaurantRepository, never()).save(any());
     }
 }

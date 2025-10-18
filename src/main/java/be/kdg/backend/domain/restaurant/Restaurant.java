@@ -1,5 +1,6 @@
 package be.kdg.backend.domain.restaurant;
 
+import be.kdg.backend.domain.DomainConflictException;
 import be.kdg.backend.domain.Price;
 import be.kdg.backend.domain.dish.*;
 import lombok.*;
@@ -48,14 +49,14 @@ public class Restaurant {
 
     public void open() {
         if (this.status == RestaurantStatus.ACTIVE) {
-            throw new IllegalStateException("Restaurant is already open");
+            throw new DomainConflictException("Restaurant is already open");
         }
         this.status = RestaurantStatus.ACTIVE;
     }
 
     public void close() {
         if (this.status == RestaurantStatus.INACTIVE) {
-            throw new IllegalStateException("Restaurant is already closed");
+            throw new DomainConflictException("Restaurant is already closed");
         }
         this.status = RestaurantStatus.INACTIVE;
     }
@@ -168,14 +169,8 @@ public class Restaurant {
     //validateDishCanBePublished(Dish dish)
     public void validateDishCanBePublished(Dish dish) {
         if (dish.getStatus() == DishStatus.PUBLISHED) {
-            throw new IllegalStateException("Dish is already published");
+            throw new DomainConflictException("Dish is already published");
         }
-        /*
-        if (dish.getStatus() == DishStatus.OUT_OF_STOCK) {
-            throw new IllegalStateException("Cannot publish dish that is out of stock");
-        }
-        */
-
     }
 
     private Optional<Dish> findDraftByName(DishName name) {
