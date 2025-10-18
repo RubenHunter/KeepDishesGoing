@@ -37,7 +37,7 @@ public class RestaurantController {
     get, public, resp: List<RestaurantDto>
     */
     @PostMapping({"", "/"})
-    public ResponseEntity<Void> createRestaurant(@Valid @RequestBody CreateRestaurantDto dto, JwtAuthenticationToken jwt) {
+    public ResponseEntity<RestaurantDto> createRestaurant(@Valid @RequestBody CreateRestaurantDto dto, JwtAuthenticationToken jwt) {
         UUID ownerId = UUID.fromString(jwt.getToken().getSubject());
         RestaurantId createdId = restaurantService.createRestaurant(dto.name(), ownerId);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()

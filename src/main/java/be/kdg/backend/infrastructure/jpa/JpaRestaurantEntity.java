@@ -89,7 +89,7 @@ public class JpaRestaurantEntity {
     }
 
     public void applyFromDomain(Restaurant r) {
-        this.name = r.getName().toString();
+        this.name = r.getName().name();
         this.status = r.getStatus();
         this.ownerId = r.getOwnerId();
 

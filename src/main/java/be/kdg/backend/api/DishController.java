@@ -36,7 +36,7 @@ public class DishController {
     */
     @PostMapping("/restaurants/{id}/dishes")
     @PreAuthorize("@ownerGuard.canManageRestaurant(#id)")
-    public ResponseEntity<Void> createDish(@Valid @RequestBody CreateDishDto dto, @PathVariable final UUID id) {
+    public ResponseEntity<DishDto> createDish(@Valid @RequestBody CreateDishDto dto, @PathVariable final UUID id) {
         final RestaurantId restaurantId = new RestaurantId(id);
 
         DishCategory categoryEnum = (dto.category() == null || dto.category().isBlank())

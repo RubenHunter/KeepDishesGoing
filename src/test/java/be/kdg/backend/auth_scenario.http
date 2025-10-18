@@ -4,6 +4,7 @@
 @kc = http://localhost:8180
 @realm = keepdishesgoing
 
+
 ### Get token (owner: ruben)
 POST {{kc}}/realms/{{realm}}/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
@@ -56,7 +57,6 @@ GET {{server}}/api/restaurants/{{rid}}
 GET {{server}}/api/restaurants/{{rid}}
 
 
-
 ### OWNER FLOW ─ create draft dish
 POST {{server}}/api/restaurants/{{rid}}/dishes
 Authorization: Bearer {{owner_token}}
@@ -68,21 +68,18 @@ Content-Type: application/json
   "price": { "amount": 3.00, "currency": "EUR" },
   "category": "APPETIZER"
 }
+> {%
+    const loc = response.headers.valueOf("Location");
+    if (loc) {
+        client.global.set("dishId", loc.split("/").pop());
+    } else {
+        client.log("Location header missing");
+    }
+%}
 
-### OWNER FLOW ─ list dishes and capture Fries id
+### OWNER FLOW ─ list dishes
 GET {{server}}/api/restaurants/{{rid}}/dishes
 Authorization: Bearer {{owner_token}}
-
-> {%
-  let list = [];
-  try {
-    list = JSON.parse(response.body);
-  } catch (e) {
-    client.log("JSON parse error: " + e);
-  }
-  const found = Array.isArray(list) ? list.find(d => d && d.name === "Fries") : null;
-  client.global.set("dishId", found && found.id ? String(found.id) : "");
-%}
 
 ### OWNER FLOW ─ publish dish
 PATCH {{server}}/api/restaurants/{{rid}}/dishes/{{dishId}}/publish
@@ -101,8 +98,6 @@ Content-Type: application/json
 ### List all dishes of restaurant
 GET {{server}}/api/restaurants/{{rid}}/dishes
 
-### Get published menu
-GET {{server}}/api/restaurants/{{rid}}/menu
 
 ### OWNER FLOW ─ add another draft dish (for scheduled publish demo)
 POST {{server}}/api/restaurants/{{rid}}/dishes
@@ -116,12 +111,20 @@ Content-Type: application/json
   "category": "MAIN_COURSE"
 }
 
+### OWNER FLOW ─ publish all drafts immediately
+POST {{server}}/api/restaurants/{{rid}}/publish_menu
+Authorization: Bearer {{owner_token}}
+
+### OWNER FLOW - verify dishes are published
+GET {{server}}/api/restaurants/{{rid}}/menu
+
+
 ### OWNER FLOW ─ schedule publish all drafts (use a future timestamp)
 POST {{server}}/api/restaurants/{{rid}}/schedule_publish
 Authorization: Bearer {{owner_token}}
 Content-Type: application/json
 
-{ "publishAt": "2099-12-31T23:59:59" }
+{ "publishAt": "2004-12-31T23:59:59" }
 
 ### OWNER FLOW ─ read-only endpoints still work
 GET {{server}}/api/restaurants/{{rid}}

@@ -3,10 +3,8 @@ package be.kdg.backend.api.dto;
 import be.kdg.backend.domain.Price;
 import be.kdg.backend.domain.dish.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 public record DishDto(
         UUID id,
