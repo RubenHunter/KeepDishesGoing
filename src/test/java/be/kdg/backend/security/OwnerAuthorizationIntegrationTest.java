@@ -15,12 +15,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/*
- Requires:
- - Spring Security configured as OAuth2 Resource Server for JWT
- - Controllers protected with @PreAuthorize and role/owner checks
- - Restaurant creation sets ownerId from token's sub
-*/
+
 @SpringBootTest
 @AutoConfigureMockMvc
 class OwnerAuthorizationIntegrationTest {
@@ -48,65 +43,131 @@ class OwnerAuthorizationIntegrationTest {
     }
 
     @Test
-    void create_and_open_by_owner_succeeds_but_other_user_forbidden() throws Exception {
+    void owner_create_restaurant_returns_created_with_location() throws Exception {
+        // arrange
         String ownerSub = UUID.randomUUID().toString();
-        String otherSub = UUID.randomUUID().toString();
+        String body = "{\"name\":\"OwnedResto\"}";
 
-        // Owner creates a restaurant
-        var create = mockMvc.perform(
-                        post("/api/restaurants")
-                                .with(ownerJwt(ownerSub))
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"name\":\"OwnedResto\"}")
-                ).andExpect(status().isCreated())
-                .andExpect(header().string("Location", containsString("/api/restaurants/")))
-                .andReturn();
+        // act
+        var result = mockMvc.perform(
+                post("/api/restaurants")
+                        .with(ownerJwt(ownerSub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body)
+        );
 
-        // Extract created id from Location
-        String location = create.getResponse().getHeader("Location");
-        String id = location.substring(location.lastIndexOf('/') + 1);
-
-        // Owner can open
-        mockMvc.perform(patch("/api/restaurants/{id}/open", id).with(ownerJwt(ownerSub)))
-                .andExpect(status().isNoContent());
-
-        // Non-owner forbidden
-        mockMvc.perform(patch("/api/restaurants/{id}/close", id).with(otherJwt(otherSub)))
-                .andExpect(status().isForbidden());
-
-        // Unauthenticated -> 401
-        mockMvc.perform(patch("/api/restaurants/{id}/open", id))
-                .andExpect(status().isUnauthorized());
+        // assert
+        result.andExpect(status().isCreated())
+                .andExpect(header().string("Location", containsString("/api/restaurants/")));
     }
 
     @Test
-    void dish_mutations_require_owner_of_that_restaurant() throws Exception {
+    void owner_can_open_owned_restaurant() throws Exception {
+        // arrange
+        String ownerSub = UUID.randomUUID().toString();
+        String id = createRestaurantAs(ownerSub, "OwnedResto");
+
+        // act
+        var result = mockMvc.perform(
+                patch("/api/restaurants/{id}/open", id).with(ownerJwt(ownerSub))
+        );
+
+        // assert
+        result.andExpect(status().isNoContent());
+    }
+
+    @Test
+    void non_owner_cannot_close_others_restaurant() throws Exception {
+        // arrange
         String ownerSub = UUID.randomUUID().toString();
         String otherSub = UUID.randomUUID().toString();
+        String id = createRestaurantAs(ownerSub, "OwnedResto");
 
-        // Create restaurant as owner
-        var create = mockMvc.perform(
-                post("/api/restaurants").with(ownerJwt(ownerSub))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"DishResto\"}")
-        ).andExpect(status().isCreated()).andReturn();
+        // act
+        var result = mockMvc.perform(
+                patch("/api/restaurants/{id}/close", id).with(otherJwt(otherSub))
+        );
 
-        String rid = create.getResponse().getHeader("Location").replaceAll(".*/", "");
+        // assert
+        result.andExpect(status().isForbidden());
+    }
 
-        // Create a draft dish as owner
+    @Test
+    void unauthenticated_open_returns_401() throws Exception {
+        // arrange
+        String ownerSub = UUID.randomUUID().toString();
+        String id = createRestaurantAs(ownerSub, "OwnedResto");
+
+        // act
+        var result = mockMvc.perform(
+                patch("/api/restaurants/{id}/open", id)
+        );
+
+        // assert
+        result.andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void owner_can_create_draft_dish_returns_created() throws Exception {
+        // arrange
+        String ownerSub = UUID.randomUUID().toString();
+        String rid = createRestaurantAs(ownerSub, "DishResto");
         String payload = """
         { "name":"Soup","description":"Tomato","price":{"amount":5.50,"currency":"EUR"}, "category":"APPETIZER" }
         """;
-        mockMvc.perform(
-                post("/api/restaurants/{id}/dishes", rid).with(ownerJwt(ownerSub))
+
+        // act
+        var result = mockMvc.perform(
+                post("/api/restaurants/{id}/dishes", rid)
+                        .with(ownerJwt(ownerSub))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload)
-        ).andExpect(status().isCreated());
+        );
 
-        // Other user cannot publish
-        mockMvc.perform(
-                patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, UUID.randomUUID())
+        // assert
+        result.andExpect(status().isCreated());
+    }
+
+    @Test
+    void non_owner_cannot_publish_dish() throws Exception {
+        // arrange
+        String ownerSub = UUID.randomUUID().toString();
+        String otherSub = UUID.randomUUID().toString();
+        String rid = createRestaurantAs(ownerSub, "DishResto");
+        String dishId = createDishAs(ownerSub, rid, """
+        { "name":"Soup","description":"Tomato","price":{"amount":5.50,"currency":"EUR"}, "category":"APPETIZER" }
+        """);
+
+        // act
+        var result = mockMvc.perform(
+                patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, dishId)
                         .with(otherJwt(otherSub))
-        ).andExpect(status().isForbidden());
+        );
+
+        // assert
+        result.andExpect(status().isForbidden());
+    }
+
+    // helpers
+    private String createRestaurantAs(String sub, String name) throws Exception {
+        var resp = mockMvc.perform(
+                post("/api/restaurants")
+                        .with(ownerJwt(sub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\"}")
+        ).andReturn();
+        String location = resp.getResponse().getHeader("Location");
+        return location.substring(location.lastIndexOf('/') + 1);
+    }
+
+    private String createDishAs(String sub, String rid, String payload) throws Exception {
+        var resp = mockMvc.perform(
+                post("/api/restaurants/{id}/dishes", rid)
+                        .with(ownerJwt(sub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload)
+        ).andReturn();
+        String location = resp.getResponse().getHeader("Location");
+        return location.substring(location.lastIndexOf('/') + 1);
     }
 }

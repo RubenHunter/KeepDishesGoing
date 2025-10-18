@@ -17,7 +17,7 @@ public record Price(BigDecimal amount, String currency) {
         if (currency == null || currency.isEmpty()) {
             throw new IllegalArgumentException("Currency cannot be null or empty");
         }
-        // other validation here
+
     }
 
     public boolean isPositive(BigDecimal amount) {

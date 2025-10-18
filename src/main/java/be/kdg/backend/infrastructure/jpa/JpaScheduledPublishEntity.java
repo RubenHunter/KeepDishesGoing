@@ -54,12 +54,6 @@ public class JpaScheduledPublishEntity {
         this.updatedAt = LocalDateTime.now();
     }
 
-//    public UUID getId() { return id; }
-//    public UUID getRestaurantId() { return restaurantId; }
-//    public LocalDateTime getPublishAt() { return publishAt; }
-//    public Status getStatus() { return status; }
-//    public int getAttempts() { return attempts; }
-//    public String getLastError() { return lastError; }
 
     public void markRunning() {
         this.status = Status.RUNNING;

@@ -79,7 +79,6 @@ public class Restaurant {
     }
 
 
-    // Update behavior with versioning:
     // Reuse a single draft per logical dish (by name). If editing a published dish:
     // - find existing draft with same name and reset it to the current published state,
     // - If target is PUBLISHED -> create a new DRAFT copy with updates and return its id.
@@ -133,7 +132,6 @@ public class Restaurant {
     }
 
 
-    //publishDish(DishId dishId)
     // Publish a dish and delete any other published version with the same name
     public void publishDish(DishId dishId) {
         Dish toPublish = findDishById(dishId);
@@ -153,13 +151,11 @@ public class Restaurant {
         dish.markAsDraft();
     }
 
-    //markDishOutOfStock(DishId dishId)
     public void markDishOutOfStock(DishId dishId) {
         Dish dish = findDishById(dishId);
         dish.markOutOfStock();
     }
 
-    //updateDishPrice(DishId dishId, Price newPrice)
     public void updateDishPrice(DishId dishId, Price newPrice) {
         Dish dish = findDishById(dishId);
         dish.updatePrice(newPrice);
@@ -172,7 +168,6 @@ public class Restaurant {
                 .toList();
     }
 
-    //validateDishCanBePublished(Dish dish)
     public void validateDishCanBePublished(Dish dish) {
         if (dish.getStatus() == DishStatus.PUBLISHED) {
             throw new DomainConflictException("Dish is already published");

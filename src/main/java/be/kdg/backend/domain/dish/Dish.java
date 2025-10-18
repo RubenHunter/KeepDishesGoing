@@ -43,7 +43,7 @@ public class Dish {
     }
 
     //methods
-    //publish() -> validation: Price must be positive, Dish cannot be empty
+    //publish() -> validation: Price must be positive, Dish cannot be already published
     public void publish() {
         if (this.status == DishStatus.PUBLISHED) {
             throw new ValidationException("Dish is already published");
@@ -58,36 +58,32 @@ public class Dish {
         this.status = DishStatus.PUBLISHED;
     }
 
-    //markOutOfStock()
+
     public void markOutOfStock() {
         this.status = DishStatus.OUT_OF_STOCK;
     }
-    // Move back to draft
+
     public void markAsDraft() {
         this.status = DishStatus.DRAFT;
     }
 
-    //updatePrice(Price newPrice)
     public void updatePrice(Price newPrice) {
         validatePrice(newPrice);
         this.price = newPrice;
     }
 
-    // Update description
     public void updateDescription(Description newDescription) {
         this.description = newDescription;
     }
-    // Update category
+
     public void updateCategory(DishCategory newCategory) {
         this.category = newCategory;
     }
 
-    //isAvailable()
     public boolean isAvailable(Price price) {
         return this.status == DishStatus.PUBLISHED && this.price.isPositive(price.amount());
     }
 
-    //validatePrice(Price price)
     private void validatePrice(Price price) {
         if (!price.isPositive(price.amount())) {
             throw new ValidationException("Price must be positive");

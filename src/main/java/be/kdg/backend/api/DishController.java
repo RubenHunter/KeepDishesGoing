@@ -4,7 +4,6 @@ import be.kdg.backend.api.dto.*;
 import be.kdg.backend.application.DishService;
 import be.kdg.backend.domain.dish.*;
 import be.kdg.backend.domain.restaurant.RestaurantId;
-import be.kdg.backend.infrastructure.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -29,7 +28,6 @@ public class DishController {
     }
 
     /*
-    ? have to rethink these to fit new domain model
      /restaurants/{id}/dishes
      post, owner, req: CreateDishDto,
      get, owner, resp: List<DishDto>
@@ -59,7 +57,7 @@ public class DishController {
         ).build();
     }
 
-    // GET /restaurants/{id}/dishes -> service returns DTOs; optional name filter handled in service/DB
+    // GET /restaurants/{id}/dishes -> service returns DTOs
     @GetMapping("/restaurants/{id}/dishes")
     public ResponseEntity<List<DishDto>> getAllDishes(
             @PathVariable final UUID id) {

@@ -9,8 +9,6 @@ import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.domain.restaurant.RestaurantId;
 import be.kdg.backend.domain.scheduling.IScheduledPublishRepository;
 import be.kdg.backend.domain.scheduling.ScheduledPublishJob;
-import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishEntity;
-import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -114,7 +112,6 @@ public class DishService {
         restaurantRepository.save(restaurant);
     }
 
-    // Publish all DRAFT dishes
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void publishAllDraftDishes(RestaurantId restaurantId) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)

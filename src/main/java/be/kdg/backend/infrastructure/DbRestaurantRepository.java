@@ -18,7 +18,6 @@ public class DbRestaurantRepository implements IRestaurantRepository {
         this.jpaRestaurantRepository = jpaRestaurantRepository;
     }
 
-    //AI gebruikt want begreep de error niet goed genoeg
     @Override
     public void save(Restaurant restaurant) {
         final UUID id = restaurant.getId().id();
@@ -27,7 +26,6 @@ public class DbRestaurantRepository implements IRestaurantRepository {
         if (maybeManaged.isPresent()) {
             JpaRestaurantEntity managed = maybeManaged.get();
             managed.applyFromDomain(restaurant);
-            // managed entity will be flushed at tx commit
             return;
         }
 

@@ -4,7 +4,6 @@ import be.kdg.backend.domain.Price;
 import be.kdg.backend.domain.dish.*;
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
 import jakarta.persistence.Entity;
 
 import java.math.BigDecimal;
@@ -58,7 +57,7 @@ public class JpaDishEntity {
         e.id = d.getId().id();
         e.name = d.getName().name();
         e.description = d.getDescription() == null ? null : d.getDescription().description();
-        e.price = d.getPrice().amount(); // currency not persisted in this table
+        e.price = d.getPrice().amount(); // currency not persisted in this table voor als we altijd ervan uitgaan dat het EU is en in fronend we omzetten naar andere currencies
         e.category = d.getCategory();
         e.status = d.getStatus();
         e.setRestaurant(restaurant);

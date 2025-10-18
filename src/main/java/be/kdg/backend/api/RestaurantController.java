@@ -49,7 +49,7 @@ public class RestaurantController {
     }
 
     @GetMapping({"", "/"})
-    public ResponseEntity<Iterable<RestaurantDto>> getAllRestaurants(/*@RequestParam(defaultValue = "") String name*/) {
+    public ResponseEntity<Iterable<RestaurantDto>> getAllRestaurants() {
         log.info("REST request to get all Restaurants");
         List<Restaurant> allRestaurants = restaurantService.listRestaurants();
         List<RestaurantDto> restaurantDtos = allRestaurants.stream()

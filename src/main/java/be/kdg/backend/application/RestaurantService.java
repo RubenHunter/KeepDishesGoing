@@ -1,8 +1,5 @@
 package be.kdg.backend.application;
 
-import be.kdg.backend.api.dto.RestaurantDto;
-import be.kdg.backend.domain.dish.Dish;
-import be.kdg.backend.domain.dish.DishId;
 import be.kdg.backend.domain.restaurant.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,14 +33,6 @@ public class RestaurantService {
         restaurantRepository.save(restaurant);
         return restaurant.getId();
     }
-
-    /*
-    // Keep the original for other internal usages if any
-    public Restaurant createRestaurant(final Restaurant restaurant) {
-        restaurantRepository.save(restaurant);
-        return restaurant;
-    }
-    */
 
     public Restaurant getRestaurantById(final RestaurantId id) {
         return restaurantRepository.getById(id)
