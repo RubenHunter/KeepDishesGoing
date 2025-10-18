@@ -1,0 +1,29 @@
+### Test restaurant status endpoint
+GET http://localhost:8080/api/restaurants/a6a52c73-9070-4128-a988-255383b941bc/status
+
+### Test menu item validation with correct price
+POST http://localhost:8080/api/restaurants/a6a52c73-9070-4128-a988-255383b941bc/menu/4ac746dc-7943-479e-b3ee-d158b9f15260/validate
+Content-Type: application/json
+
+{
+  "expectedPrice": 14.5,
+  "currency": "EUR"
+}
+
+### Test menu item validation with wrong price
+POST http://localhost:8080/api/restaurants/a6a52c73-9070-4128-a988-255383b941bc/menu/4ac746dc-7943-479e-b3ee-d158b9f15260/validate
+Content-Type: application/json
+
+{
+  "expectedPrice": 10.0,
+  "currency": "EUR"
+}
+
+### Test menu item validation with non-existent dish
+POST http://localhost:8080/api/restaurants/a6a52c73-9070-4128-a988-255383b941bc/menu/00000000-0000-0000-0000-000000000000/validate
+Content-Type: application/json
+
+{
+  "expectedPrice": 15.0,
+  "currency": "EUR"
+}
