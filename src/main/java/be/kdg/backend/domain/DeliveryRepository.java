@@ -10,6 +10,7 @@ public interface DeliveryRepository {
     Optional<Delivery> findById(DeliveryId id);
     List<Delivery> findByDeliveryPersonId(DeliveryPersonId deliveryPersonId);
     List<Delivery> findByStatus(DeliveryStatus status);
+    List<Delivery> findAvailableForAssignment();
     List<Delivery> findAll();
     Delivery save(Delivery delivery);
     void delete(Delivery delivery);

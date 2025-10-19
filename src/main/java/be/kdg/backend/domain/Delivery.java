@@ -20,6 +20,7 @@ public class Delivery {
     private LocalDateTime pickedUpAt;
     private LocalDateTime deliveredAt;
     private CancellationReason cancellationReason;
+    private boolean availableForSelfAssignment;
 
     public Delivery(DeliveryId id, OrderId orderId, Address pickupAddress, Address deliveryAddress) {
         validateConstructor(id, orderId, pickupAddress, deliveryAddress);
@@ -35,13 +36,14 @@ public class Delivery {
         this.deliveredAt = null;
         this.cancellationReason = null;
         this.deliveryPersonId = null;
+        this.availableForSelfAssignment = true;
     }
 
     private Delivery(DeliveryId id, OrderId orderId, DeliveryPersonId deliveryPersonId,
                      Address pickupAddress, Address deliveryAddress, DeliveryStatus status,
                      LocalDateTime estimatedDeliveryTime, LocalDateTime assignedAt,
                      LocalDateTime pickedUpAt, LocalDateTime deliveredAt,
-                     CancellationReason cancellationReason) {
+                     CancellationReason cancellationReason, boolean availableForSelfAssignment) {
         this.id = id;
         this.orderId = orderId;
         this.deliveryPersonId = deliveryPersonId;
@@ -53,16 +55,17 @@ public class Delivery {
         this.pickedUpAt = pickedUpAt;
         this.deliveredAt = deliveredAt;
         this.cancellationReason = cancellationReason;
+        this.availableForSelfAssignment = availableForSelfAssignment;
     }
 
     public static Delivery reconstruct(DeliveryId id, OrderId orderId, DeliveryPersonId deliveryPersonId,
                                        Address pickupAddress, Address deliveryAddress, DeliveryStatus status,
                                        LocalDateTime estimatedDeliveryTime, LocalDateTime assignedAt,
                                        LocalDateTime pickedUpAt, LocalDateTime deliveredAt,
-                                       CancellationReason cancellationReason) {
+                                       CancellationReason cancellationReason, boolean availableForSelfAssignment) {
         Delivery delivery = new Delivery(id, orderId, deliveryPersonId, pickupAddress, deliveryAddress,
                 status, estimatedDeliveryTime, assignedAt, pickedUpAt,
-                deliveredAt, cancellationReason);
+                deliveredAt, cancellationReason, availableForSelfAssignment);
         delivery.validateDeliveryConsistency();
         return delivery;
     }
@@ -77,6 +80,7 @@ public class Delivery {
     public void assignDeliveryPerson(DeliveryPersonId personId, LocalDateTime assignedAt) {
         validateDeliveryAssignment();
         validateNoExistingAssignment();
+        validateAvailableForAssignment();
 
         if (personId == null) {
             throw new IllegalArgumentException("Delivery person ID cannot be null");
@@ -90,7 +94,43 @@ public class Delivery {
 
         this.deliveryPersonId = personId;
         this.status = DeliveryStatus.ASSIGNED;
+        this.availableForSelfAssignment = false;
         this.estimatedDeliveryTime = calculateEstimatedTime();
+    }
+
+    public void selfAssignDeliveryPerson(DeliveryPersonId personId, LocalDateTime assignedAt) {
+        validateDeliveryAssignment();
+        validateNoExistingAssignment();
+        validateAvailableForAssignment();
+
+        if (personId == null) {
+            throw new IllegalArgumentException("Delivery person ID cannot be null");
+        }
+        if (assignedAt == null) {
+            throw new IllegalArgumentException("Assignment time cannot be null");
+        }
+        if (assignedAt.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Assignment time cannot be in the past");
+        }
+
+        this.deliveryPersonId = personId;
+        this.status = DeliveryStatus.ASSIGNED;
+        this.availableForSelfAssignment = false;
+        this.estimatedDeliveryTime = calculateEstimatedTime();
+    }
+
+    public void markAsUnavailableForAssignment() {
+        this.availableForSelfAssignment = false;
+    }
+
+    public void markAsAvailableForAssignment() {
+        if (hasAssignedDeliveryPerson()) {
+            throw new IllegalStateException("Cannot mark delivery as available when it has an assigned delivery person");
+        }
+        if (status != DeliveryStatus.PENDING) {
+            throw new IllegalStateException("Only pending deliveries can be marked as available for assignment");
+        }
+        this.availableForSelfAssignment = true;
     }
 
     public void markPickedUp() {
@@ -134,10 +174,15 @@ public class Delivery {
         this.status = DeliveryStatus.CANCELLED;
         this.cancellationReason = reason;
         this.deliveryPersonId = null;
+        this.availableForSelfAssignment = false;
     }
 
     public boolean hasAssignedDeliveryPerson() {
         return deliveryPersonId != null;
+    }
+
+    public boolean isAvailableForSelfAssignment() {
+        return availableForSelfAssignment && status == DeliveryStatus.PENDING && !hasAssignedDeliveryPerson();
     }
 
     public DeliveryPersonId getAssignedDeliveryPersonId() {
@@ -174,6 +219,12 @@ public class Delivery {
     private void validateNoExistingAssignment() {
         if (hasAssignedDeliveryPerson()) {
             throw new DeliveryAlreadyAssignedException(this.id);
+        }
+    }
+
+    private void validateAvailableForAssignment() {
+        if (!isAvailableForSelfAssignment()) {
+            throw new DeliveryNotAvailableException(this.id);
         }
     }
 
@@ -226,6 +277,9 @@ public class Delivery {
         }
         if (estimatedDeliveryTime != null && estimatedDeliveryTime.isBefore(LocalDateTime.now())) {
             throw new IllegalStateException("Estimated delivery time must be in the future");
+        }
+        if (availableForSelfAssignment && hasAssignedDeliveryPerson()) {
+            throw new IllegalStateException("Delivery cannot be available for assignment when it has an assigned delivery person");
         }
     }
 

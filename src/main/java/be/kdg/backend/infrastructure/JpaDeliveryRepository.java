@@ -33,6 +33,13 @@ public class JpaDeliveryRepository implements DeliveryRepository {
     }
 
     @Override
+    public List<Delivery> findAvailableForAssignment() {
+        return springDataRepository.findAvailableForAssignment().stream()
+                .map(DeliveryJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<Delivery> findAll() {
         return springDataRepository.findAll().stream()
                 .map(DeliveryJpaEntity::toDomain)

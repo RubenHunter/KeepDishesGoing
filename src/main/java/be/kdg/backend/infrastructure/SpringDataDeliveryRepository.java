@@ -18,4 +18,7 @@ public interface SpringDataDeliveryRepository extends JpaRepository<DeliveryJpaE
 
     @Query("SELECT d FROM DeliveryJpaEntity d WHERE d.status = :status")
     List<DeliveryJpaEntity> findByStatus(@Param("status") DeliveryStatus status);
+
+    @Query("SELECT d FROM DeliveryJpaEntity d WHERE d.status = 'PENDING' AND d.availableForSelfAssignment = true AND d.deliveryPersonId IS NULL")
+    List<DeliveryJpaEntity> findAvailableForAssignment();
 }

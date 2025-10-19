@@ -7,8 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
@@ -33,6 +35,7 @@ class DeliverySingleDeliveryPersonTest {
     @InjectMocks
     private DeliveryApplicationService deliveryService;
 
+    //n
     @Test
     void shouldPreventAssignmentWhenDeliveryAlreadyHasDeliveryPerson() {
         DeliveryPersonId personId = DeliveryPersonId.of("DP-12345");
@@ -75,52 +78,54 @@ class DeliverySingleDeliveryPersonTest {
         verify(deliveryRepository, never()).save(any());
         verify(deliveryPersonRepository, never()).save(any());
     }
-//ng
-@Test
-void shouldAllowReassignmentWhenDeliveryHasExistingDeliveryPerson() {
-    DeliveryPersonId newPersonId = DeliveryPersonId.of("DP-12345");
-    DeliveryPersonId currentPersonId = DeliveryPersonId.of("DP-99999");
-    DeliveryId deliveryId = DeliveryId.of("DEL-67890");
 
-    DeliveryPerson newDeliveryPerson = new DeliveryPerson(
-            newPersonId,
-            new PersonName("John Doe"),
-            VehicleType.BICYCLE,
-            true,
-            new Location(52.3676, 4.9041)
-    );
+    //ng
+    @Test
+    void shouldAllowReassignmentWhenDeliveryHasExistingDeliveryPerson() {
+        DeliveryPersonId newPersonId = DeliveryPersonId.of("DP-12345");
+        DeliveryPersonId currentPersonId = DeliveryPersonId.of("DP-99999");
+        DeliveryId deliveryId = DeliveryId.of("DEL-67890");
 
-    DeliveryPerson currentDeliveryPerson = new DeliveryPerson(
-            currentPersonId,
-            new PersonName("Jane Smith"),
-            VehicleType.SCOOTER,
-            false,
-            new Location(52.3676, 4.9041)
-    );
+        DeliveryPerson newDeliveryPerson = new DeliveryPerson(
+                newPersonId,
+                new PersonName("John Doe"),
+                VehicleType.BICYCLE,
+                true,
+                new Location(52.3676, 4.9041)
+        );
 
-    // Mock de Delivery om tijd-gerelateerde problemen te voorkomen
-    Delivery delivery = mock(Delivery.class);
-    when(delivery.getId()).thenReturn(deliveryId);
-    when(delivery.getDeliveryPersonId()).thenReturn(currentPersonId);
-    when(delivery.hasAssignedDeliveryPerson()).thenReturn(true);
+        DeliveryPerson currentDeliveryPerson = new DeliveryPerson(
+                currentPersonId,
+                new PersonName("Jane Smith"),
+                VehicleType.SCOOTER,
+                false,
+                new Location(52.3676, 4.9041)
+        );
 
-    currentDeliveryPerson.assignDelivery(deliveryId);
+        // Mock de Delivery om tijd-gerelateerde problemen te voorkomen
+        Delivery delivery = mock(Delivery.class);
+        when(delivery.getId()).thenReturn(deliveryId);
+        when(delivery.getDeliveryPersonId()).thenReturn(currentPersonId);
+        when(delivery.hasAssignedDeliveryPerson()).thenReturn(true);
 
-    when(deliveryRepository.findById(deliveryId)).thenReturn(Optional.of(delivery));
-    when(deliveryPersonRepository.findById(newPersonId)).thenReturn(Optional.of(newDeliveryPerson));
-    when(deliveryPersonRepository.findById(currentPersonId)).thenReturn(Optional.of(currentDeliveryPerson));
-    when(deliveryAssignmentService.canAssignDelivery(any(), any(), anyDouble())).thenReturn(true);
+        currentDeliveryPerson.assignDelivery(deliveryId);
 
-    deliveryService.reassignDeliveryPerson(new be.kdg.backend.application.ReassignDeliveryPersonCommand(
-            deliveryId.value(),
-            newPersonId.value()
-    ));
+        when(deliveryRepository.findById(deliveryId)).thenReturn(Optional.of(delivery));
+        when(deliveryPersonRepository.findById(newPersonId)).thenReturn(Optional.of(newDeliveryPerson));
+        when(deliveryPersonRepository.findById(currentPersonId)).thenReturn(Optional.of(currentDeliveryPerson));
+        when(deliveryAssignmentService.canAssignDelivery(any(), any(), anyDouble())).thenReturn(true);
 
-    verify(deliveryRepository).save(delivery);
-    verify(deliveryPersonRepository, times(2)).save(any());
-    //Verify dat de reassignment logica werd uitgevoerd
-    verify(delivery).assignDeliveryPerson(newPersonId, any(LocalDateTime.class));
-}
+        deliveryService.reassignDeliveryPerson(new be.kdg.backend.application.ReassignDeliveryPersonCommand(
+                deliveryId.value(),
+                newPersonId.value()
+        ));
+
+        verify(deliveryRepository).save(delivery);
+        verify(deliveryPersonRepository, times(2)).save(any());
+        //Verify dat de reassignment logica werd uitgevoerd
+        verify(delivery).assignDeliveryPerson(newPersonId, any(LocalDateTime.class));
+    }
+
     @Test
     void shouldReturnTrueWhenDeliveryHasAssignedDeliveryPerson() {
         DeliveryId deliveryId = DeliveryId.of("DEL-67890");

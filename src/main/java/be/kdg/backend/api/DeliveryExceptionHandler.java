@@ -10,6 +10,16 @@ import java.util.Map;
 @RestControllerAdvice
 public class DeliveryExceptionHandler {
 
+    @ExceptionHandler(DeliveryNotAvailableException.class)
+    public ResponseEntity<Object> handleDeliveryNotAvailable(DeliveryNotAvailableException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "error", "DELIVERY_NOT_AVAILABLE",
+                        "message", ex.getMessage(),
+                        "code", "US27_VIOLATION"
+                ));
+    }
+
     @ExceptionHandler(DeliveryAlreadyAssignedException.class)
     public ResponseEntity<Object> handleDeliveryAlreadyAssigned(DeliveryAlreadyAssignedException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

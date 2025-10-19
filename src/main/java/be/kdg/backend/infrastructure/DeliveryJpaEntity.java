@@ -60,6 +60,9 @@ public class DeliveryJpaEntity {
     @Column(name = "cancellation_reason")
     private String cancellationReason;
 
+    @Column(name = "available_for_self_assignment", nullable = false)
+    private boolean availableForSelfAssignment;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -81,6 +84,7 @@ public class DeliveryJpaEntity {
         entity.pickedUpAt = delivery.getPickedUpAt();
         entity.deliveredAt = delivery.getDeliveredAt();
         entity.cancellationReason = delivery.getCancellationReason() != null ? delivery.getCancellationReason().value() : null;
+        entity.availableForSelfAssignment = delivery.isAvailableForSelfAssignment();
         return entity;
     }
 
@@ -96,7 +100,8 @@ public class DeliveryJpaEntity {
                 this.assignedAt,
                 this.pickedUpAt,
                 this.deliveredAt,
-                this.cancellationReason != null ? new CancellationReason(this.cancellationReason) : null
+                this.cancellationReason != null ? new CancellationReason(this.cancellationReason) : null,
+                this.availableForSelfAssignment
         );
     }
 }
