@@ -1,8 +1,5 @@
 package be.kdg.backend.api;
-import be.kdg.backend.domain.DeliveryNotFoundException;
-import be.kdg.backend.domain.DeliveryPersonAlreadyAssignedException;
-import be.kdg.backend.domain.DeliveryPersonNotFoundException;
-import be.kdg.backend.domain.InvalidDeliveryStatusException;
+import be.kdg.backend.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -12,6 +9,16 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class DeliveryExceptionHandler {
+
+    @ExceptionHandler(DeliveryAlreadyAssignedException.class)
+    public ResponseEntity<Object> handleDeliveryAlreadyAssigned(DeliveryAlreadyAssignedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "error", "DELIVERY_ALREADY_ASSIGNED",
+                        "message", ex.getMessage(),
+                        "code", "US32_VIOLATION"
+                ));
+    }
 
     @ExceptionHandler(DeliveryPersonAlreadyAssignedException.class)
     public ResponseEntity<Object> handleDeliveryPersonAlreadyAssigned(DeliveryPersonAlreadyAssignedException ex) {

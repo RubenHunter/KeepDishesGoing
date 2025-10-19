@@ -76,6 +76,7 @@ public class Delivery {
 
     public void assignDeliveryPerson(DeliveryPersonId personId, LocalDateTime assignedAt) {
         validateDeliveryAssignment();
+        validateNoExistingAssignment();
 
         if (personId == null) {
             throw new IllegalArgumentException("Delivery person ID cannot be null");
@@ -135,6 +136,14 @@ public class Delivery {
         this.deliveryPersonId = null;
     }
 
+    public boolean hasAssignedDeliveryPerson() {
+        return deliveryPersonId != null;
+    }
+
+    public DeliveryPersonId getAssignedDeliveryPersonId() {
+        return deliveryPersonId;
+    }
+
     public LocalDateTime calculateEstimatedTime() {
         LocalDateTime baseTime = LocalDateTime.now();
 
@@ -160,8 +169,11 @@ public class Delivery {
         if (status != DeliveryStatus.PENDING) {
             throw new IllegalStateException("Only pending deliveries can be assigned");
         }
-        if (deliveryPersonId != null) {
-            throw new IllegalStateException("Delivery already has an assigned person");
+    }
+
+    private void validateNoExistingAssignment() {
+        if (hasAssignedDeliveryPerson()) {
+            throw new DeliveryAlreadyAssignedException(this.id);
         }
     }
 

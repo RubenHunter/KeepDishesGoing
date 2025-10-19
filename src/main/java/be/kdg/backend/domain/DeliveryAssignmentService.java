@@ -6,8 +6,12 @@ import org.jmolecules.ddd.annotation.Service;
 public class DeliveryAssignmentService {
 
     public boolean canAssignDelivery(DeliveryPerson deliveryPerson, Delivery delivery, double maxRadiusKm) {
-        if (!deliveryPerson.canAcceptDelivery()) {
-            throw new DeliveryPersonAlreadyAssignedException(deliveryPerson.getId());
+        if (deliveryPerson.hasActiveAssignment()) {
+            return false;
+        }
+
+        if (delivery.hasAssignedDeliveryPerson()) {
+            return false;
         }
 
         Location restaurantLocation = estimateRestaurantLocation(delivery.getPickupAddress());
@@ -24,6 +28,12 @@ public class DeliveryAssignmentService {
     public void validateSingleActiveAssignment(DeliveryPerson deliveryPerson) {
         if (deliveryPerson.hasActiveAssignment()) {
             throw new DeliveryPersonAlreadyAssignedException(deliveryPerson.getId());
+        }
+    }
+
+    public void validateSingleDeliveryPersonPerDelivery(Delivery delivery) {
+        if (delivery.hasAssignedDeliveryPerson()) {
+            throw new DeliveryAlreadyAssignedException(delivery.getId());
         }
     }
 
