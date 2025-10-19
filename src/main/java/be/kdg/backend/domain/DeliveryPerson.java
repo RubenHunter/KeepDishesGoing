@@ -15,6 +15,7 @@ public class DeliveryPerson {
     private boolean isAvailable;
     private Location currentLocation;
     private DeliveryId assignedDeliveryId;
+    private LocalDateTime assignmentTime;
 
     public DeliveryPerson(DeliveryPersonId id, PersonName name, VehicleType vehicleType,
                           boolean isAvailable, Location currentLocation) {
@@ -26,6 +27,7 @@ public class DeliveryPerson {
         this.isAvailable = isAvailable;
         this.currentLocation = currentLocation;
         this.assignedDeliveryId = null;
+        this.assignmentTime = null;
     }
 
     private void validateConstructor(DeliveryPersonId id, PersonName name,
@@ -37,25 +39,28 @@ public class DeliveryPerson {
     }
 
     public void updateAvailability(boolean available) {
-        if (!available && assignedDeliveryId != null) {
-            throw new IllegalStateException("Cannot set unavailable while having an assigned delivery");
+        if (!available && hasActiveAssignment()) {
+            throw new DeliveryPersonAlreadyAssignedException(this.id);
         }
         this.isAvailable = available;
     }
 
     public void assignDelivery(DeliveryId deliveryId) {
+        if (hasActiveAssignment()) {
+            throw new DeliveryPersonAlreadyAssignedException(this.id);
+        }
         if (!isAvailable) {
             throw new IllegalStateException("Delivery person is not available for assignment");
         }
-        if (assignedDeliveryId != null) {
-            throw new IllegalStateException("Delivery person already has an assigned delivery");
-        }
+
         this.assignedDeliveryId = deliveryId;
+        this.assignmentTime = LocalDateTime.now();
         this.isAvailable = false;
     }
 
     public void unassignDelivery() {
         this.assignedDeliveryId = null;
+        this.assignmentTime = null;
         this.isAvailable = true;
     }
 
@@ -67,7 +72,11 @@ public class DeliveryPerson {
     }
 
     public boolean canAcceptDelivery() {
-        return isAvailable && assignedDeliveryId == null;
+        return isAvailable && !hasActiveAssignment();
+    }
+
+    public boolean hasActiveAssignment() {
+        return assignedDeliveryId != null;
     }
 
     public boolean isWithinDeliveryRadius(Location restaurantLocation, double maxRadiusKm) {
@@ -91,6 +100,7 @@ public class DeliveryPerson {
     public boolean isAvailable() { return isAvailable; }
     public Location getCurrentLocation() { return currentLocation; }
     public DeliveryId getAssignedDeliveryId() { return assignedDeliveryId; }
+    public LocalDateTime getAssignmentTime() { return assignmentTime; }
 
     @Override
     public boolean equals(Object o) {

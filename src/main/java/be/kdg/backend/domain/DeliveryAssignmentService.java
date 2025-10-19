@@ -7,7 +7,7 @@ public class DeliveryAssignmentService {
 
     public boolean canAssignDelivery(DeliveryPerson deliveryPerson, Delivery delivery, double maxRadiusKm) {
         if (!deliveryPerson.canAcceptDelivery()) {
-            return false;
+            throw new DeliveryPersonAlreadyAssignedException(deliveryPerson.getId());
         }
 
         Location restaurantLocation = estimateRestaurantLocation(delivery.getPickupAddress());
@@ -21,11 +21,17 @@ public class DeliveryAssignmentService {
         return deliveryPerson.isVehicleSuitableForDistance(totalDistance);
     }
 
+    public void validateSingleActiveAssignment(DeliveryPerson deliveryPerson) {
+        if (deliveryPerson.hasActiveAssignment()) {
+            throw new DeliveryPersonAlreadyAssignedException(deliveryPerson.getId());
+        }
+    }
+
     private Location estimateRestaurantLocation(Address address) {
-        return new Location(52.3676, 4.9041); // Simplified - would use geocoding service
+        return new Location(52.3676, 4.9041);
     }
 
     private Location estimateDeliveryLocation(Address address) {
-        return new Location(52.3791, 4.9003); // Simplified - would use geocoding service
+        return new Location(52.3791, 4.9003);
     }
 }

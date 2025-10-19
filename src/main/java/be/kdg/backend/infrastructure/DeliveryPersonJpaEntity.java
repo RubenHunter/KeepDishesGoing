@@ -1,5 +1,4 @@
 package be.kdg.backend.infrastructure;
-
 import be.kdg.backend.domain.*;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -36,6 +35,9 @@ public class DeliveryPersonJpaEntity {
     @Column(name = "assigned_delivery_id")
     private String assignedDeliveryId;
 
+    @Column(name = "assignment_time")
+    private LocalDateTime assignmentTime;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -53,16 +55,23 @@ public class DeliveryPersonJpaEntity {
         entity.latitude = deliveryPerson.getCurrentLocation().latitude();
         entity.longitude = deliveryPerson.getCurrentLocation().longitude();
         entity.assignedDeliveryId = deliveryPerson.getAssignedDeliveryId() != null ? deliveryPerson.getAssignedDeliveryId().value() : null;
+        entity.assignmentTime = deliveryPerson.getAssignmentTime();
         return entity;
     }
 
     public DeliveryPerson toDomain() {
-        return new DeliveryPerson(
+        DeliveryPerson deliveryPerson = new DeliveryPerson(
                 DeliveryPersonId.of(this.id),
                 new PersonName(this.name),
                 this.vehicleType,
                 this.isAvailable,
                 new Location(this.latitude, this.longitude)
         );
+
+        if (this.assignedDeliveryId != null) {
+            deliveryPerson.assignDelivery(DeliveryId.of(this.assignedDeliveryId));
+        }
+
+        return deliveryPerson;
     }
 }

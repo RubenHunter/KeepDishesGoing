@@ -120,6 +120,7 @@ public class Delivery {
 
         this.status = DeliveryStatus.DELIVERED;
         this.deliveredAt = LocalDateTime.now();
+        this.deliveryPersonId = null;
     }
 
     public void cancelDelivery(CancellationReason reason) {
@@ -138,8 +139,8 @@ public class Delivery {
         LocalDateTime baseTime = LocalDateTime.now();
 
         if (status == DeliveryStatus.PICKED_UP || status == DeliveryStatus.IN_TRANSIT) {
-            Location pickupLocation = new Location(52.3676, 4.9041); // Example: Amsterdam
-            Location deliveryLocation = new Location(52.3791, 4.9003); // Example: Amsterdam center
+            Location pickupLocation = new Location(52.3676, 4.9041);
+            Location deliveryLocation = new Location(52.3791, 4.9003);
             double distance = pickupLocation.calculateDistance(deliveryLocation);
 
             double speedKmH = getAverageSpeed();
@@ -148,11 +149,11 @@ public class Delivery {
             return baseTime.plusMinutes((long) (estimatedHours * 60));
         }
 
-        return baseTime.plusMinutes(30); // Default estimation
+        return baseTime.plusMinutes(30);
     }
 
     private double getAverageSpeed() {
-        return 15.0; // Average speed in km/h, could be based on vehicle type
+        return 15.0;
     }
 
     private void validateDeliveryAssignment() {
