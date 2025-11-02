@@ -1,10 +1,18 @@
-export interface Order {
-    id: number,
-    restaurantId: number,
-    //Orderstatus: status,
-    placedAt: string,//of Date (maar dit heeft timezones)
-    acceptedAt: string,
-    //customer: CustomerInfo, //CustomerInfo is Valueobject
-    //totalPrice: Money,  //money is Valueobject
-
+export interface OrderItemRequest {
+    menuItemId: string;
+    itemName: string;
+    quantity: number;
+    unitPrice: number;
+}
+export interface CreateOrderRequest {
+    customerId: string;
+    restaurantId: string;
+    deliveryAddress: string;
+    customerEmail: string;
+    items: OrderItemRequest[];
+}
+export interface OrderResponse {
+    orderId: string;
+    message: string;
+    status: string;
 }

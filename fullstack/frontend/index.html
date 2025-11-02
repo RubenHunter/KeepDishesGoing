@@ -1,14 +1,37 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script type="module" src="/src/main.ts"></script>
-    <title>Vite + TS</title>
-  </head>
-  <body>
+<head>
+  <meta charset="UTF-8" />
+  <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+  <title>Order Service</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet"
+  />
+  <link rel="stylesheet" href="./src/css/style.css" />
+</head>
+<body>
+<div id="root">
+  <header class="navbar">
+    <a href="#/" class="brand">
+      <span class="brand-gradient">KeepDishesGoing</span>
+    </a>
+    <nav class="nav-actions">
+      <a class="btn btn-ghost" href="#/">Restaurants</a>
+      <a class="btn btn-primary" href="#/cart">
+        Cart
+        <span id="cart-badge" class="badge">0</span>
+      </a>
+    </nav>
+  </header>
+  <main class="container">
     <div id="app"></div>
-
-  </body>
+  </main>
+</div>
+<script type="module" src="/src/ts/main.ts"></script>
+</body>
 </html>

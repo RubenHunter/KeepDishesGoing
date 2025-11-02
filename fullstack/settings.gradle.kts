@@ -1,4 +1,4 @@
-rootProject.name = "restaurant-service"
+rootProject.name = "order-service"
 
 include("backend")
 include("frontend")
