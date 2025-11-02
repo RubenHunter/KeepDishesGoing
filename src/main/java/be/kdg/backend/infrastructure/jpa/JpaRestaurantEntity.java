@@ -73,7 +73,7 @@ public class JpaRestaurantEntity {
     }
 
     public Restaurant toDomain() {
-        List<Dish> domainDishes = this.dishes == null
+        List<Dish> domainDishes = (this.dishes == null)
                 ? new ArrayList<>()
                 : this.dishes.stream()
                 .map(JpaDishEntity::toDomain)
@@ -84,7 +84,11 @@ public class JpaRestaurantEntity {
                 new RestaurantName(this.name),
                 this.status,
                 domainDishes,
-                this.ownerId
+                this.ownerId,
+                null,   // fullAddress
+                null,   // email
+                null,   // openingHours
+                null    // logoUrl
         );
     }
 

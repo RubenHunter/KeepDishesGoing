@@ -44,7 +44,14 @@ public class RestaurantController {
     @PostMapping({"", "/"})
     public ResponseEntity<RestaurantDto> createRestaurant(@Valid @RequestBody CreateRestaurantDto dto, JwtAuthenticationToken jwt) {
         UUID ownerId = UUID.fromString(jwt.getToken().getSubject());
-        RestaurantId createdId = restaurantService.createRestaurant(dto.name(), ownerId);
+        RestaurantId createdId = restaurantService.createRestaurant(
+                dto.name(),
+                dto.fullAddress(),
+                dto.email(),
+                dto.openingHours(),
+                dto.logo(),
+                ownerId
+        );
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(createdId.id())

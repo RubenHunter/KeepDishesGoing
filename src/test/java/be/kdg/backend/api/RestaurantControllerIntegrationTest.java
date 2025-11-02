@@ -42,7 +42,15 @@ class RestaurantControllerIntegrationTest {
     void us2_shouldCreateRestaurant() throws Exception {
         // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        String body = "{\"name\":\"Story Restaurant\"}";
+        String body = """
+        { 
+          "name":"Story Restaurant",
+          "fullAddress":"Main Street 1, 1000 Brussels, BE",
+          "email":"owner@example.com",
+          "openingHours":"Mon-Sun 10:00-22:00",
+          "logo":"https://example.com/logo.png"
+        }
+        """;
 
         // Act
         var result = mockMvc.perform(

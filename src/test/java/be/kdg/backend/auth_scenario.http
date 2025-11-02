@@ -28,7 +28,11 @@ Authorization: Bearer {{owner_token}}
 Content-Type: application/json
 
 {
-  "name": "Story Restaurant"
+  "name": "Story Restaurant",
+  "fullAddress": "Main Street 1, 1000 Brussels, BE",
+  "email": "owner@example.com",
+  "openingHours": "Mon-Sun 10:00-22:00",
+  "logo": "https://example.com/logo.png"
 }
 > {%
     const loc = response.headers.valueOf("Location");

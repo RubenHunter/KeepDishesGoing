@@ -34,6 +34,18 @@ public class RestaurantService {
         return restaurant.getId();
     }
 
+    // US3: required data
+    public RestaurantId createRestaurant(final String name,
+                                         final String fullAddress,
+                                         final String email,
+                                         final String openingHours,
+                                         final String logoUrl,
+                                         final UUID ownerId) {
+        Restaurant restaurant = Restaurant.create(name, fullAddress, email, openingHours, logoUrl, ownerId);
+        restaurantRepository.save(restaurant);
+        return restaurant.getId();
+    }
+
     public Restaurant getRestaurantById(final RestaurantId id) {
         return restaurantRepository.getById(id)
                 .orElseThrow(id::notFound);

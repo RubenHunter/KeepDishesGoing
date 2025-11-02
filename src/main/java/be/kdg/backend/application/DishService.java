@@ -117,13 +117,8 @@ public class DishService {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
 
-        List<Dish> drafts = restaurant.getDishes().stream()
-                .filter(d -> d.getStatus() == DishStatus.DRAFT)
-                .toList();
-
-        for (Dish d : drafts) {
-            restaurant.publishDish(d.getId());
-        }
+        // Move loop into the aggregate
+        restaurant.publishAllDraftDishes();
 
         restaurantRepository.save(restaurant);
     }
