@@ -118,4 +118,16 @@ public class InMemoryRestaurantRepository implements IRestaurantRepository {
     public Optional<UUID> getOwnerId(RestaurantId id) {
         return Optional.empty();
     }
+
+    @Override
+    public boolean existsByOwnerId(UUID ownerId) {
+        return false;
+    }
+
+    @Override
+    public Optional<Restaurant> findByOwnerId(UUID ownerId) {
+        return Optional.empty();
+    }
+
+
 }

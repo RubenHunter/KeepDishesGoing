@@ -224,4 +224,45 @@ class OwnerAuthorizationIntegrationTest {
         if (location == null) throw new IllegalStateException("Location header missing");
         return location.substring(location.lastIndexOf('/') + 1);
     }
+
+    // US1: same owner cannot create a second restaurant
+    @Test
+    void owner_cannot_create_second_restaurant_returns_conflict() throws Exception {
+        String ownerSub = UUID.randomUUID().toString();
+
+        String body1 = """
+        {
+          "name":"R1",
+          "fullAddress":"Addr 1",
+          "email":"%s@example.com",
+          "openingHours":"Mon-Fri 10-18",
+          "logo":"https://example.com/logo1.png"
+        }
+        """.formatted(ownerSub.substring(0, 8));
+
+        mockMvc.perform(
+                        post("/api/restaurants")
+                                .with(ownerJwt(ownerSub))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body1)
+                ).andExpect(status().isCreated())
+                .andExpect(header().string("Location", containsString("/api/restaurants/")));
+
+        String body2 = """
+        {
+          "name":"R2",
+          "fullAddress":"Addr 2",
+          "email":"%s@example.com",
+          "openingHours":"Mon-Fri 10-18",
+          "logo":"https://example.com/logo2.png"
+        }
+        """.formatted(ownerSub.substring(0, 8));
+
+        mockMvc.perform(
+                post("/api/restaurants")
+                        .with(ownerJwt(ownerSub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body2)
+        ).andExpect(status().isConflict());
+    }
 }

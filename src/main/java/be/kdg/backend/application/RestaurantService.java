@@ -1,6 +1,8 @@
 package be.kdg.backend.application;
 
+import be.kdg.backend.domain.DomainConflictException;
 import be.kdg.backend.domain.restaurant.*;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +24,14 @@ public class RestaurantService {
 
     // Service does not depend on DTOs
     public RestaurantId createRestaurant(final String name) {
-        Restaurant restaurant = Restaurant.create(name);
-        //static create method domein regels in Restaurant domain
-        restaurantRepository.save(restaurant);
-        return restaurant.getId();
+        return createRestaurant(
+                name,
+                "Test Street 1, 1000 TestCity, BE",
+                "test@example.com",
+                "Mon-Sun 00:00-23:59",
+                "https://example.com/logo.png",
+                UUID.randomUUID()
+        );
     }
     // Overload voor createRestaurant met ownerId
     public RestaurantId createRestaurant(final String name, UUID ownerId) { // new
@@ -34,14 +40,17 @@ public class RestaurantService {
         return restaurant.getId();
     }
 
-    // US3: required data
+    // US3 + US1: domain enforces invariant; service provides policy only
     public RestaurantId createRestaurant(final String name,
                                          final String fullAddress,
                                          final String email,
                                          final String openingHours,
                                          final String logoUrl,
                                          final UUID ownerId) {
-        Restaurant restaurant = Restaurant.create(name, fullAddress, email, openingHours, logoUrl, ownerId);
+        Restaurant restaurant = Restaurant.create(
+                name, fullAddress, email, openingHours, logoUrl, ownerId,
+                restaurantRepository::existsByOwnerId
+        );
         restaurantRepository.save(restaurant);
         return restaurant.getId();
     }

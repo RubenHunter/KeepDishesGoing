@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -29,7 +30,8 @@ class RestaurantControllerIntegrationTest {
     private RequestPostProcessor ownerJwt(String sub) {
         return SecurityMockMvcRequestPostProcessors.jwt()
                 .jwt(jwt -> jwt.subject(sub).claim("realm_access",
-                        java.util.Map.of("roles", java.util.List.of("owner"))));
+                        java.util.Map.of("roles", java.util.List.of("owner"))))
+                .authorities(jwt -> java.util.Collections.emptyList());
     }
 
     @AfterEach
@@ -69,15 +71,14 @@ class RestaurantControllerIntegrationTest {
     void us12_shouldOpenRestaurant() throws Exception {
         // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        var r = helper.createRestaurant("US12-open");
-        var rid = helper.id(r);
+        String id = createRestaurantAs(sub, "US12-open");
 
         // Act
-        mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()).with(ownerJwt(sub)))
+        mockMvc.perform(patch("/api/restaurants/{id}/open", id).with(ownerJwt(sub)))
                 .andExpect(status().isNoContent());
 
         // Assert: verify state changed
-        mockMvc.perform(get("/api/restaurants/{id}", rid.id()).with(ownerJwt(sub)))
+        mockMvc.perform(get("/api/restaurants/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
@@ -87,15 +88,39 @@ class RestaurantControllerIntegrationTest {
     void us12_openingAlreadyOpenShouldFail() throws Exception {
         // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        Restaurant r = helper.createRestaurant("Open twice");
-        RestaurantId rid = helper.id(r);
-        mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()).with(ownerJwt(sub))).andExpect(status().isNoContent());
+        String id = createRestaurantAs(sub, "Open twice");
+        mockMvc.perform(patch("/api/restaurants/{id}/open", id).with(ownerJwt(sub)))
+                .andExpect(status().isNoContent());
 
         // Act & Assert
-        mockMvc.perform(patch("/api/restaurants/{id}/open", rid.id()).with(ownerJwt(sub)))
+        mockMvc.perform(patch("/api/restaurants/{id}/open", id).with(ownerJwt(sub)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLICT"))
                 .andExpect(jsonPath("$.message", containsString("already open")));
     }
 
+    // helpers (same approach as in OwnerAuthorizationIntegrationTest)
+    private String createRestaurantAs(String sub, String name) throws Exception {
+        String body = """
+        {
+          "name":"%s",
+          "fullAddress":"Main Street 1, 1000 Brussels, BE",
+          "email":"%s@example.com",
+          "openingHours":"Mon-Sun 10:00-22:00",
+          "logo":"https://example.com/logo.png"
+        }
+        """.formatted(name, sub.substring(0, 8));
+
+        var resp = mockMvc.perform(
+                        post("/api/restaurants")
+                                .with(ownerJwt(sub))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                ).andExpect(status().isCreated())
+                .andReturn();
+
+        String location = resp.getResponse().getHeader("Location");
+        if (location == null) throw new IllegalStateException("Location header missing");
+        return location.substring(location.lastIndexOf('/') + 1);
+    }
 }

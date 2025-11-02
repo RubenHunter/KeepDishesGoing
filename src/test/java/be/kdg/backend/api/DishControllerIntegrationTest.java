@@ -2,9 +2,6 @@ package be.kdg.backend.api;
 
 import be.kdg.backend.TestHelper;
 import be.kdg.backend.application.ScheduledPublishProcessor;
-import be.kdg.backend.domain.dish.*;
-import be.kdg.backend.domain.restaurant.Restaurant;
-import be.kdg.backend.domain.restaurant.RestaurantId;
 import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishEntity;
 import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -17,10 +14,15 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import java.util.UUID;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -54,10 +56,9 @@ class DishControllerIntegrationTest {
     // US4: Draft should not affect live menu
     @Test
     void us4_draftDoesNotAffectMenu() throws Exception {
-        // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        Restaurant r = helper.createRestaurant("US4");
-        RestaurantId rid = helper.id(r);
+        String rid = createRestaurantAs(sub, "US4");
+
         String payload = """
         {
           "name": "Tagliatelle",
@@ -67,16 +68,14 @@ class DishControllerIntegrationTest {
         }
         """;
 
-        // Act
-        var result = mockMvc.perform(
-                post("/api/restaurants/{id}/dishes", rid.id())
-                        .with(ownerJwt(sub))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload));
+        mockMvc.perform(
+                        post("/api/restaurants/{id}/dishes", rid)
+                                .with(ownerJwt(sub))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(payload))
+                .andExpect(status().isCreated());
 
-        // Assert
-        result.andExpect(status().isCreated());
-        mockMvc.perform(get("/api/restaurants/{id}/menu", rid.id()))
+        mockMvc.perform(get("/api/restaurants/{id}/menu", rid))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }
@@ -84,56 +83,54 @@ class DishControllerIntegrationTest {
     // US6: Publish and depublish a single dish (happy path)
     @Test
     void us6_publishAndDepublishDish() throws Exception {
-        // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        Restaurant r = helper.createRestaurant("US6");
-        RestaurantId rid = helper.id(r);
-        DishId id = helper.addDraftDish(r, "Soup", new BigDecimal("6.50"), "EUR", DishCategory.APPETIZER, "Tomato");
+        String rid = createRestaurantAs(sub, "US6");
+        String dishId = createDishAs(sub, rid, """
+        { "name":"Soup","description":"Tomato","price":{"amount":6.50,"currency":"EUR"}, "category":"APPETIZER" }
+        """);
 
-        // Act
-        var result = mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()).with(ownerJwt(sub)));
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, dishId).with(ownerJwt(sub)))
+                .andExpect(status().isNoContent());
 
-        // Assert
-        result.andExpect(status().isNoContent());
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/depublish", rid.id(), id.id()).with(ownerJwt(sub)))
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/depublish", rid, dishId).with(ownerJwt(sub)))
                 .andExpect(status().isNoContent());
     }
 
     // US6: Publishing an already published dish should fail
     @Test
     void us6_publishingAlreadyPublishedShouldFail() throws Exception {
-        // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        Restaurant r = helper.createRestaurant("US6-fail");
-        RestaurantId rid = helper.id(r);
-        DishId id = helper.addDraftDish(r, "Curry", new BigDecimal("11.00"), "EUR", DishCategory.MAIN_COURSE, "Spicy");
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()).with(ownerJwt(sub)))
+        String rid = createRestaurantAs(sub, "US6-fail");
+        String dishId = createDishAs(sub, rid, """
+        { "name":"Curry","description":"Spicy","price":{"amount":11.00,"currency":"EUR"}, "category":"MAIN_COURSE" }
+        """);
+
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, dishId).with(ownerJwt(sub)))
                 .andExpect(status().isNoContent());
 
-        //Act + Assert
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()).with(ownerJwt(sub)))
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, dishId).with(ownerJwt(sub)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLICT"))
                 .andExpect(jsonPath("$.message", containsString("already published")));
-
     }
 
     // US7: Apply all pending changes (publish all drafts)
     @Test
     void us7_publishAllDrafts() throws Exception {
-        // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        Restaurant r = helper.createRestaurant("US7");
-        RestaurantId rid = helper.id(r);
-        helper.addDraftDish(r, "DishA", new BigDecimal("8.00"), "EUR", DishCategory.MAIN_COURSE, "a");
-        helper.addDraftDish(r, "DishB", new BigDecimal("9.00"), "EUR", DishCategory.MAIN_COURSE, "b");
+        String rid = createRestaurantAs(sub, "US7");
 
-        // Act
-        var result = mockMvc.perform(post("/api/restaurants/{rid}/publish_menu", rid.id()).with(ownerJwt(sub)));
+        createDishAs(sub, rid, """
+        { "name":"DishA","description":"a","price":{"amount":8.00,"currency":"EUR"}, "category":"MAIN_COURSE" }
+        """);
+        createDishAs(sub, rid, """
+        { "name":"DishB","description":"b","price":{"amount":9.00,"currency":"EUR"}, "category":"MAIN_COURSE" }
+        """);
 
-        // Assert
-        result.andExpect(status().isNoContent());
-        mockMvc.perform(get("/api/restaurants/{id}/menu", rid.id()).with(ownerJwt(sub)))
+        mockMvc.perform(post("/api/restaurants/{rid}/publish_menu", rid).with(ownerJwt(sub)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/restaurants/{id}/menu", rid).with(ownerJwt(sub)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
     }
@@ -141,17 +138,13 @@ class DishControllerIntegrationTest {
     // US7: No drafts -> no change
     @Test
     void us7_publishAllDraftsNoopWhenNone() throws Exception {
-        // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        Restaurant r = helper.createRestaurant("US7-noop");
-        RestaurantId rid = helper.id(r);
+        String rid = createRestaurantAs(sub, "US7-noop");
 
-        // Act
-        var result = mockMvc.perform(post("/api/restaurants/{rid}/publish_menu", rid.id()).with(ownerJwt(sub)));
+        mockMvc.perform(post("/api/restaurants/{rid}/publish_menu", rid).with(ownerJwt(sub)))
+                .andExpect(status().isNoContent());
 
-        // Assert
-        result.andExpect(status().isNoContent());
-        mockMvc.perform(get("/api/restaurants/{id}/menu", rid.id()).with(ownerJwt(sub)))
+        mockMvc.perform(get("/api/restaurants/{id}/menu", rid).with(ownerJwt(sub)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }
@@ -159,27 +152,27 @@ class DishControllerIntegrationTest {
     // US8: Schedule publish in the future and process it
     @Test
     void us8_schedulePublishAndProcess() throws Exception {
-        // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        Restaurant r = helper.createRestaurant("US8");
-        RestaurantId rid = helper.id(r);
-        helper.addDraftDish(r, "Noodles", new BigDecimal("7.50"), "EUR", DishCategory.MAIN_COURSE, "veg");
+        String rid = createRestaurantAs(sub, "US8");
+        createDishAs(sub, rid, """
+        { "name":"Noodles","description":"veg","price":{"amount":7.50,"currency":"EUR"}, "category":"MAIN_COURSE" }
+        """);
+
         String payload = """
         { "publishAt": "%s" }
         """.formatted(LocalDateTime.now().plusSeconds(1));
 
-        // Act
-        var result = mockMvc.perform(
-                post("/api/restaurants/{rid}/schedule_publish", rid.id())
-                        .with(ownerJwt(sub))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload));
+        mockMvc.perform(
+                        post("/api/restaurants/{rid}/schedule_publish", rid)
+                                .with(ownerJwt(sub))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(payload))
+                .andExpect(status().isNoContent());
 
-        // Assert
-        result.andExpect(status().isNoContent());
         JpaScheduledPublishEntity job = scheduledRepo.findAll().getFirst();
         scheduledProcessor.processJob(job.getId());
-        mockMvc.perform(get("/api/restaurants/{id}/menu", rid.id()).with(ownerJwt(sub)))
+
+        mockMvc.perform(get("/api/restaurants/{id}/menu", rid).with(ownerJwt(sub)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)));
     }
@@ -187,48 +180,42 @@ class DishControllerIntegrationTest {
     // US8: Scheduling in the past should fail
     @Test
     void us8_schedulePublishInPastShouldFail() throws Exception {
-        // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        Restaurant r = helper.createRestaurant("US8-fail");
-        RestaurantId rid = helper.id(r);
+        String rid = createRestaurantAs(sub, "US8-fail");
+
         String payload = """
         { "publishAt": "%s" }
         """.formatted(LocalDateTime.now().minusMinutes(1));
 
-        // Act
-        var result = mockMvc.perform(
-                post("/api/restaurants/{rid}/schedule_publish", rid.id())
-                        .with(ownerJwt(sub))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(payload));
-
-        // Assert
-        result.andExpect(status().isBadRequest())
+        mockMvc.perform(
+                        post("/api/restaurants/{rid}/schedule_publish", rid)
+                                .with(ownerJwt(sub))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(payload))
+                .andExpect(status().isBadRequest())
                 .andExpect(content().string(containsString("publishAt must be in the future")));
-
     }
 
     // US9: Toggle availability immediately (not schedulable)
     @Test
     void us9_toggleAvailability() throws Exception {
-        // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        Restaurant r = helper.createRestaurant("US9");
-        RestaurantId rid = helper.id(r);
-        DishId id = helper.addDraftDish(r, "Fries", new BigDecimal("3.00"), "EUR", DishCategory.APPETIZER, "salt");
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid.id(), id.id()).with(ownerJwt(sub)))
+        String rid = createRestaurantAs(sub, "US9");
+        String dishId = createDishAs(sub, rid, """
+        { "name":"Fries","description":"salt","price":{"amount":3.00,"currency":"EUR"}, "category":"APPETIZER" }
+        """);
+
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, dishId).with(ownerJwt(sub)))
                 .andExpect(status().isNoContent());
 
-        // Act
-        var result = mockMvc.perform(
-                patch("/api/restaurants/{rid}/dishes/{dishId}/availability", rid.id(), id.id())
-                        .with(ownerJwt(sub))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"available\": false}"));
+        mockMvc.perform(
+                        patch("/api/restaurants/{rid}/dishes/{dishId}/availability", rid, dishId)
+                                .with(ownerJwt(sub))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"available\": false}"))
+                .andExpect(status().isNoContent());
 
-        // Assert
-        result.andExpect(status().isNoContent());
-        mockMvc.perform(get("/api/restaurants/{id}/dishes", rid.id()).with(ownerJwt(sub)))
+        mockMvc.perform(get("/api/restaurants/{id}/dishes", rid).with(ownerJwt(sub)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.name=='Fries')].status", hasItem("OUT_OF_STOCK")));
     }
@@ -236,20 +223,54 @@ class DishControllerIntegrationTest {
     // US9: Toggle availability for unknown dish should fail
     @Test
     void us9_toggleAvailabilityUnknownDishShouldFail() throws Exception {
-        // Arrange
         String sub = java.util.UUID.randomUUID().toString();
-        Restaurant r = helper.createRestaurant("US9-fail");
-        RestaurantId rid = helper.id(r);
-        DishId unknown = helper.randomDishId();
+        String rid = createRestaurantAs(sub, "US9-fail");
+        String unknownDishId = UUID.randomUUID().toString();
 
-        // Act
-        var result = mockMvc.perform(
-                patch("/api/restaurants/{rid}/dishes/{dishId}/availability", rid.id(), unknown.id())
-                        .with(ownerJwt(sub))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"available\": false}"));
+        mockMvc.perform(
+                        patch("/api/restaurants/{rid}/dishes/{dishId}/availability", rid, unknownDishId)
+                                .with(ownerJwt(sub))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"available\": false}"))
+                .andExpect(status().isNotFound());
+    }
 
-        // Assert
-        result.andExpect(status().isNotFound());
+    // helpers (copied from OwnerAuthorizationIntegrationTest)
+    private String createRestaurantAs(String sub, String name) throws Exception {
+        String body = """
+        {
+          "name":"%s",
+          "fullAddress":"Main Street 1, 1000 Brussels, BE",
+          "email":"%s@example.com",
+          "openingHours":"Mon-Sun 10:00-22:00",
+          "logo":"https://example.com/logo.png"
+        }
+        """.formatted(name, sub.substring(0, 8));
+
+        var resp = mockMvc.perform(
+                        post("/api/restaurants")
+                                .with(ownerJwt(sub))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                ).andExpect(status().isCreated())
+                .andReturn();
+
+        String location = resp.getResponse().getHeader("Location");
+        if (location == null) throw new IllegalStateException("Location header missing");
+        return location.substring(location.lastIndexOf('/') + 1);
+    }
+
+    private String createDishAs(String sub, String rid, String payload) throws Exception {
+        var resp = mockMvc.perform(
+                        post("/api/restaurants/{id}/dishes", rid)
+                                .with(ownerJwt(sub))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(payload)
+                ).andExpect(status().isCreated())
+                .andReturn();
+
+        String location = resp.getResponse().getHeader("Location");
+        if (location == null) throw new IllegalStateException("Location header missing");
+        return location.substring(location.lastIndexOf('/') + 1);
     }
 }

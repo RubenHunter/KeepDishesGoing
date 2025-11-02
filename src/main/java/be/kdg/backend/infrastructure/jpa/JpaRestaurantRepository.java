@@ -14,4 +14,9 @@ public interface JpaRestaurantRepository extends JpaRepository<JpaRestaurantEnti
     // New: fetch only ownerId to avoid touching lazy collections
     @Query("select r.ownerId from JpaRestaurantEntity r where r.id = :id")
     Optional<UUID> findOwnerIdById(@Param("id") UUID id);
+
+    // US1
+    boolean existsByOwnerId(UUID ownerId);
+
+    Optional<JpaRestaurantEntity> findByOwnerId(UUID ownerId);
 }

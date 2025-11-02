@@ -43,6 +43,12 @@ public class Restaurant {
         this.logoUrl = null;
     }
 
+    // Domain policy interface (no infra dependency)
+    @FunctionalInterface
+    public interface OwnerRestaurantUniquenessPolicy {
+        boolean ownerHasRestaurant(UUID ownerId);
+    }
+
     // Static factory to enforce domain creation rules
     public static Restaurant create(String name) {
         if (name == null || name.isBlank()) {
@@ -71,12 +77,7 @@ public class Restaurant {
                                     String openingHours,
                                     String logoUrl,
                                     UUID ownerId) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("Restaurant name must not be blank");
-        if (fullAddress == null || fullAddress.isBlank()) throw new IllegalArgumentException("fullAddress must not be blank");
-        if (email == null || email.isBlank()) throw new IllegalArgumentException("email must not be blank");
-        if (openingHours == null || openingHours.isBlank()) throw new IllegalArgumentException("openingHours must not be blank");
-        if (logoUrl == null || logoUrl.isBlank()) throw new IllegalArgumentException("logoUrl must not be blank");
-        if (ownerId == null) throw new IllegalArgumentException("ownerId must not be null");
+        validateCreateArgs(name, fullAddress, email, openingHours, logoUrl, ownerId);
 
         return new Restaurant(
                 RestaurantId.create(),
@@ -89,6 +90,45 @@ public class Restaurant {
                 openingHours,
                 logoUrl
         );
+    }
+
+    // Enforce US1 inside the aggregate factory through a policy
+    public static Restaurant create(String name,
+                                    String fullAddress,
+                                    String email,
+                                    String openingHours,
+                                    String logoUrl,
+                                    UUID ownerId,
+                                    OwnerRestaurantUniquenessPolicy policy) {
+        validateCreateArgs(name, fullAddress, email, openingHours, logoUrl, ownerId);
+        if (policy == null) throw new IllegalArgumentException("policy must not be null");
+        if (policy.ownerHasRestaurant(ownerId)) {
+            throw new DomainConflictException("Owner already manages a restaurant");
+        }
+        return new Restaurant(
+                RestaurantId.create(),
+                new RestaurantName(name),
+                RestaurantStatus.INACTIVE,
+                new ArrayList<>(),
+                ownerId,
+                fullAddress,
+                email,
+                openingHours,
+                logoUrl
+        );
+    }
+    private static void validateCreateArgs(String name,
+                                           String fullAddress,
+                                           String email,
+                                           String openingHours,
+                                           String logoUrl,
+                                           UUID ownerId) {
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("Restaurant name must not be blank");
+        if (fullAddress == null || fullAddress.isBlank()) throw new IllegalArgumentException("fullAddress must not be blank");
+        if (email == null || email.isBlank()) throw new IllegalArgumentException("email must not be blank");
+        if (openingHours == null || openingHours.isBlank()) throw new IllegalArgumentException("openingHours must not be blank");
+        if (logoUrl == null || logoUrl.isBlank()) throw new IllegalArgumentException("logoUrl must not be blank");
+        if (ownerId == null) throw new IllegalArgumentException("ownerId must not be null");
     }
 
     public void open() {

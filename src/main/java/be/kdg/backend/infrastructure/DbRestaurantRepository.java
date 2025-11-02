@@ -57,4 +57,14 @@ public class DbRestaurantRepository implements IRestaurantRepository {
     public Optional<UUID> getOwnerId(RestaurantId id) {
         return jpaRestaurantRepository.findOwnerIdById(id.id());
     }
+
+    @Override
+    public boolean existsByOwnerId(UUID ownerId) {
+        return jpaRestaurantRepository.existsByOwnerId(ownerId);
+    }
+
+    @Override
+    public Optional<Restaurant> findByOwnerId(UUID ownerId) {
+        return jpaRestaurantRepository.findByOwnerId(ownerId).map(JpaRestaurantEntity::toDomain);
+    }
 }

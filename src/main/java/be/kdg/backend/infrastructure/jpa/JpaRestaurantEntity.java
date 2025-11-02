@@ -13,7 +13,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Entity
-@Table(name = "restaurants")
+@Table(name = "restaurants",
+        uniqueConstraints = {
+                // US1: one restaurant per owner
+                @UniqueConstraint(name = "uk_restaurants_owner", columnNames = "owner_id")
+        })
 public class JpaRestaurantEntity {
 
     @Id
@@ -26,12 +30,26 @@ public class JpaRestaurantEntity {
     @Column(nullable = false)
     private RestaurantStatus status;
 
-    @Column(name = "owner_id")
+    //US1
+    @Column(name = "owner_id", nullable = false, unique = true)
     private UUID ownerId;
 
     @Setter
     @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<JpaDishEntity> dishes = new ArrayList<>();
+
+    // US3 fields
+    @Column(name = "full_address")
+    private String fullAddress;
+
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "opening_hours")
+    private String openingHours;
+
+    @Column(name = "logo_url")
+    private String logoUrl;
 
     protected JpaRestaurantEntity() {
     }
@@ -41,6 +59,11 @@ public class JpaRestaurantEntity {
         this.name = name;
         this.status = status;
     }
+
+
+
+
+
 
     /*
     public static JpaRestaurantEntity fromDomain(Restaurant restaurant){
@@ -65,6 +88,10 @@ public class JpaRestaurantEntity {
         e.name = r.getName().name();
         e.status = r.getStatus();
         e.ownerId = r.getOwnerId();
+        e.fullAddress = r.getFullAddress();
+        e.email = r.getEmail();
+        e.openingHours = r.getOpeningHours();
+        e.logoUrl = r.getLogoUrl();
         for (Dish d : r.getDishes()) {
             JpaDishEntity child = JpaDishEntity.fromDomain(d, e);
             e.addDish(child);
@@ -85,10 +112,10 @@ public class JpaRestaurantEntity {
                 this.status,
                 domainDishes,
                 this.ownerId,
-                null,   // fullAddress
-                null,   // email
-                null,   // openingHours
-                null    // logoUrl
+                this.fullAddress,
+                this.email,
+                this.openingHours,
+                this.logoUrl
         );
     }
 
@@ -96,6 +123,10 @@ public class JpaRestaurantEntity {
         this.name = r.getName().name();
         this.status = r.getStatus();
         this.ownerId = r.getOwnerId();
+        this.fullAddress = r.getFullAddress();
+        this.email = r.getEmail();
+        this.openingHours = r.getOpeningHours();
+        this.logoUrl = r.getLogoUrl();
 
         Map<UUID, JpaDishEntity> current = this.dishes.stream()
                 .collect(Collectors.toMap(JpaDishEntity::getId, Function.identity()));

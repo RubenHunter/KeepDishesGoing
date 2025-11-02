@@ -17,4 +17,9 @@ public interface IRestaurantRepository {
 
     // New: lightweight owner lookup (avoids initializing lazy relations)
     Optional<UUID> getOwnerId(RestaurantId id);
+
+    // US1
+    boolean existsByOwnerId(UUID ownerId);
+
+    Optional<Restaurant> findByOwnerId(UUID ownerId);
 }
