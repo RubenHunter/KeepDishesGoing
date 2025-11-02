@@ -86,3 +86,11 @@ _Eventuele vragen voor de coach_
 ### Post Coaching
 
 #### Feedback
+publishalldraftdishes restaurant publish all drafts moet methode in restaurant domain zijn.
+
+createorderrequestdto items en price zitten erin -> unitpirce kan gebruiker veranderen. -> uit request halen, in backend naar restaurant prijs ophalen rabbitmq. 
+
+orderservice unused code opkuisen. delivery placed event moet met rabbitmq. 
+
+US3 gwn rest
+messaging!!!!
