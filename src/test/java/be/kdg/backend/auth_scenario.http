@@ -9,7 +9,7 @@
 POST {{kc}}/realms/{{realm}}/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
 
-client_id=restaurant-service&client_secret=CpEGRlmWE7PvFwuMXTLsJoOT8Gxbdqk1&username=ruben&password=ruben&grant_type=password&scope=openid
+client_id=restaurant-service&client_secret=upJ1DRbuRkHL3RKxRy0ib0ZJ4mkNIjWS&username=ruben&password=ruben&grant_type=password&scope=openid
 
 > {% client.global.set("owner_token", response.body.access_token || JSON.parse(response.body).access_token); %}
 
@@ -17,7 +17,7 @@ client_id=restaurant-service&client_secret=CpEGRlmWE7PvFwuMXTLsJoOT8Gxbdqk1&user
 POST {{kc}}/realms/{{realm}}/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
 
-client_id=restaurant-service&client_secret=CpEGRlmWE7PvFwuMXTLsJoOT8Gxbdqk1&username=user&password=user&grant_type=password&scope=openid
+client_id=restaurant-service&client_secret=upJ1DRbuRkHL3RKxRy0ib0ZJ4mkNIjWS&username=user&password=user&grant_type=password&scope=openid
 
 > {% client.global.set("user_token", response.body.access_token || JSON.parse(response.body).access_token); %}
 

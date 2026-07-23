@@ -15,6 +15,16 @@ java {
 	}
 }
 
+sourceSets {
+	main {
+		java {
+			exclude '**/idp_mysql_data/**'
+			exclude '**/rabbitmq/**'
+			exclude '**/postgresql/data/**'
+		}
+	}
+}
+
 configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
