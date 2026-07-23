@@ -58,15 +58,16 @@ public class RestRestaurantGateway implements RestaurantGateway {
                     }
                     if (!"PUBLISHED".equalsIgnoreCase(live.status())) {
                         return new MenuValidationResult.ItemValidation(
-                                it.menuItemId(), false, live.price(), "dish not published");
+                                it.menuItemId(), false, live.price().amount().doubleValue(), "dish not published");
                     }
                     double tolerance = 0.01;
-                    if (Math.abs(live.price() - it.unitPriceExpected()) > tolerance) {
+                    double livePrice = live.price().amount().doubleValue();
+                    if (Math.abs(livePrice - it.unitPriceExpected()) > tolerance) {
                         return new MenuValidationResult.ItemValidation(
-                                it.menuItemId(), true, live.price(), "price mismatch (expected="
-                                        + it.unitPriceExpected() + ", live=" + live.price() + ")");
+                                it.menuItemId(), true, livePrice, "price mismatch (expected="
+                                        + it.unitPriceExpected() + ", live=" + livePrice + ")");
                     }
-                    return new MenuValidationResult.ItemValidation(it.menuItemId(), true, live.price(), "ok");
+                    return new MenuValidationResult.ItemValidation(it.menuItemId(), true, livePrice, "ok");
                 })
                 .toList();
 
