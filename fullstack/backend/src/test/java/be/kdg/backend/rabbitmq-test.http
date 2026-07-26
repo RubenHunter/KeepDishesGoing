@@ -1,0 +1,140 @@
+### RabbitMQ Event Flow Test
+### Monitor at http://localhost:15672 → Queues tab (user / password)
+### Open two queues side-by-side to watch messages flow:
+###   q.restaurant.order-events  — where order.placed lands
+###   q.order.order-accepted      — where order.accepted lands after restaurant auto-accepts
+
+### Prerequisites: all 3 services running on :8080, :8081, :8082
+### First get a real restaurantId + dishId by running restaurant-service/dishtest.http
+
+@baseRestaurant = http://localhost:8080/api/restaurants
+@baseOrder = http://localhost:8081/api
+@restaurantId = a6a52c73-9070-4128-a988-255383b941bc
+@orderId = 550e8400-e29b-41d4-a716-446655440000
+
+### ============================================
+### A — Manual order lifecycle (trigger events directly)
+### ============================================
+
+### A1. Accept an order (restaurant owner action)
+### Watch q.order.order-accepted + q.delivery.order-accepted Ready count go to 1,
+### then drop to 0 as both services consume it.
+POST {{baseRestaurant}}/{{restaurantId}}/orders/{{orderId}}/accept
+Content-Type: application/json
+
+{"pickupAddress": "Main Street 1, 2000 Antwerpen"}
+
+### A2. Reject an order (restaurant owner action)
+### Watch q.order.order-rejected Ready count briefly go to 1, then drop to 0.
+POST {{baseRestaurant}}/{{restaurantId}}/orders/{{orderId}}/reject
+Content-Type: application/json
+
+{"reason": "Restaurant too busy"}
+
+### A3. Mark order ready for pickup
+### Watch q.order.order-ready-for-pickup + q.delivery.order-ready-for-pickup
+### Ready count go to 1, then drop to 0.
+POST {{baseRestaurant}}/{{restaurantId}}/orders/{{orderId}}/ready
+
+### ============================================
+### B — Full order flow (customer places order through order-service)
+### ============================================
+
+### B1. Create cart
+# @name createCart
+POST {{baseOrder}}/carts
+Content-Type: application/json
+
+{"customerId": "33333333-3333-3333-3333-333333333333"}
+> {%
+    client.global.set("cartId", response.body.cartId);
+    client.log("cartId = " + response.body.cartId);
+%}
+
+### B2. Add item (replace dishId with real one from menu)
+POST {{baseOrder}}/carts/{{cartId}}/items
+Content-Type: application/json
+
+{"menuItemId": "d1d82f06-3456-7891-0111-213141516171", "itemName": "Margherita", "quantity": 2, "unitPrice": 10.00, "restaurantId": "{{restaurantId}}"}
+
+### B3. Checkout
+# @name checkout
+POST {{baseOrder}}/orders/checkout
+Content-Type: application/json
+
+{"cartId": "{{cartId}}", "customerId": "33333333-3333-3333-3333-333333333333", "customerName": "Ruben", "street": "Langestraat", "number": "12", "postalCode": "2000", "city": "Antwerpen", "country": "BE", "email": "ruben@example.com"}
+> {%
+    client.global.set("paymentRef", response.body.paymentRef);
+    client.log("paymentRef = " + response.body.paymentRef);
+    client.global.set("orderId2", response.body.orderId);
+    client.log("orderId2 = " + response.body.orderId);
+%}
+
+### B4. Confirm payment
+GET {{baseOrder}}/payments/{{paymentRef}}/confirm
+
+### B5. Place order → publishes order.placed
+### Watch: q.restaurant.order-events gets 1 Ready → drops to 0
+### Then:   q.order.order-accepted gets 1 Ready → drops to 0
+###         q.delivery.order-accepted gets 1 Ready → drops to 0
+POST {{baseOrder}}/orders/{{orderId2}}/place
+
+### B6. Check tracking (should show ACCEPTED status + ORDER_PLACED + ORDER_ACCEPTED events)
+GET {{baseOrder}}/orders/{{orderId2}}/tracking
+
+### ============================================
+### C — Publish directly to exchange (raw AMQP, bypasses services)
+### ============================================
+
+### C1. Publish order.placed directly
+### Opens RabbitMQ Mgmt UI: Exchanges → kdg.events → Publish message
+### Routing key: order.placed
+### Payload (minimal, just enough for restaurant-service handler):
+# {
+#   "orderId": "00000000-0000-0000-0000-000000000001",
+#   "customerId": "00000000-0000-0000-0000-000000000002",
+#   "restaurantId": "a6a52c73-9070-4128-a988-255383b941bc",
+#   "items": [{"menuItemId": "00000000-0000-0000-0000-000000000003", "itemName": "Pizza", "quantity": 1, "unitPrice": 10.0}],
+#   "placedAt": "2026-07-23T12:00:00"
+# }
+
+### C2. Publish order.accepted directly
+### Routing key: order.accepted
+# {
+#   "orderId": "00000000-0000-0000-0000-000000000001",
+#   "restaurantId": "a6a52c73-9070-4128-a988-255383b941bc",
+#   "pickupAddress": "Test Street",
+#   "acceptedAt": "2026-07-23T12:00:00"
+# }
+
+### C3. Publish order.rejected directly
+### Routing key: order.rejected
+# {
+#   "orderId": "00000000-0000-0000-0000-000000000001",
+#   "reason": "out of stock",
+#   "rejectedAt": "2026-07-23T12:00:00"
+# }
+
+### C4. Publish order.ready_for_pickup directly
+### Routing key: order.ready_for_pickup
+# {
+#   "orderId": "00000000-0000-0000-0000-000000000001",
+#   "restaurantId": "a6a52c73-9070-4128-a988-255383b941bc",
+#   "readyAt": "2026-07-23T12:00:00"
+# }
+
+### C5. Publish order.picked_up directly
+### Routing key: order.picked_up
+# {
+#   "orderId": "00000000-0000-0000-0000-000000000001",
+#   "deliveryId": "00000000-0000-0000-0000-000000000004",
+#   "pickedUpAt": "2026-07-23T12:00:00"
+# }
+
+### C6. Publish order.delivered directly
+### Routing key: order.delivered
+# {
+#   "orderId": "00000000-0000-0000-0000-000000000001",
+#   "deliveryId": "00000000-0000-0000-0000-000000000004",
+#   "deliveredAt": "2026-07-23T12:00:00"
+# }
