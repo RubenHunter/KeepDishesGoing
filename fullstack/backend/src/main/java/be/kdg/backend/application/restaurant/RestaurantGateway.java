@@ -26,8 +26,10 @@ public interface RestaurantGateway {
             boolean open
     ) {}
 
-    record DishDto(UUID id, String name, double price, String currency,
+    record DishDto(UUID id, String name, PriceDto price,
                    String status, String category, String description) {}
+
+    record PriceDto(java.math.BigDecimal amount, String currency) {}
 
     record MenuValidationRequest(
             UUID restaurantId,
