@@ -30,6 +30,18 @@ public class DeliveryPersonService {
         return dp.id();
     }
 
+    /** Idempotent self-registration — driver id = Keycloak subject. */
+    @Transactional
+    public void registerDriverIfAbsent(DeliveryPersonId id, String name, String vehicle) {
+        if (driverRepository.findById(id).isPresent()) {
+            log.debug("Driver {} already registered", id.value());
+            return;
+        }
+        DeliveryPerson dp = new DeliveryPerson(id, name, vehicle, true);
+        driverRepository.save(dp);
+        log.info("Registered driver {} ({})", dp.id(), name);
+    }
+
     @Transactional(readOnly = true)
     public DeliveryPerson get(DeliveryPersonId id) {
         return driverRepository.findById(id)

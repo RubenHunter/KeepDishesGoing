@@ -48,8 +48,9 @@ dependencies {
 	// PDF report generation (US38)
 	implementation 'com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10'
 	implementation 'com.openhtmltopdf:openhtmltopdf-slf4j:1.0.10'
-	// Thymeleaf for the report template
+	// Thymeleaf for the report template (ognl required at runtime by thymeleaf 3.1)
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	runtimeOnly 'ognl:ognl:3.3.4'
 
 	// PostgreSQL
 	runtimeOnly 'org.postgresql:postgresql'

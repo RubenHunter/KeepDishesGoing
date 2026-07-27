@@ -1,72 +1,83 @@
 package be.kdg.backend.api;
 
-import be.kdg.backend.application.*;
-import jakarta.validation.Valid;
+import be.kdg.backend.api.dto.DeliveryResponse;
+import be.kdg.backend.application.DeliveryService;
+import be.kdg.backend.domain.delivery.Delivery;
+import be.kdg.backend.domain.shared.DeliveryId;
+import be.kdg.backend.domain.shared.DeliveryPersonId;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
+/**
+ * Courier-flows REST endpoints. JWT required (driver role).
+ */
+@Slf4j
 @RestController
 @RequestMapping("/api/deliveries")
 @RequiredArgsConstructor
 public class DeliveryController {
-    private final DeliveryApplicationService deliveryService;
 
-    @PostMapping
-    public ResponseEntity<DeliveryResponse> createDelivery(@Valid @RequestBody CreateDeliveryCommand command) {
-        var deliveryId = deliveryService.createDelivery(command);
+    private final DeliveryService deliveryService;
 
-        return ResponseEntity.created(URI.create("/api/deliveries/" + deliveryId.value()))
-                .body(deliveryService.getDelivery(deliveryId.value()));
-    }
-
-    @PostMapping("/{deliveryId}/assign")
-    public ResponseEntity<Void> assignDeliveryPerson(
-            @PathVariable String deliveryId,
-            @Valid @RequestBody AssignDeliveryPersonCommand command) {
-        deliveryService.assignDeliveryPerson(command);
+    /** US27 — courier claims a delivery (self-assign). */
+    @PostMapping("/{deliveryId}/claim")
+    public ResponseEntity<Void> claim(@PathVariable UUID deliveryId, @RequestBody SelfClaimRequest req) {
+        deliveryService.selfAssignDelivery(DeliveryId.of(deliveryId), DeliveryPersonId.of(req.driverId()), LocalDateTime.now());
         return ResponseEntity.ok().build();
     }
 
+    /** US29 — courier releases the claim (only valid while order not yet READY). */
+    @PostMapping("/{deliveryId}/cancel-claim")
+    public ResponseEntity<Void> cancelClaim(@PathVariable UUID deliveryId, @RequestBody CancelClaimRequest req) {
+        deliveryService.cancelClaim(DeliveryId.of(deliveryId), req.reason(), LocalDateTime.now());
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{deliveryId}/pickup")
-    public ResponseEntity<Void> markPickedUp(@PathVariable String deliveryId) {
-        deliveryService.markPickedUp(deliveryId);
+    public ResponseEntity<Void> pickup(@PathVariable UUID deliveryId) {
+        deliveryService.markPickedUp(DeliveryId.of(deliveryId), LocalDateTime.now());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{deliveryId}/transit")
-    public ResponseEntity<Void> markInTransit(@PathVariable String deliveryId) {
-        deliveryService.markInTransit(deliveryId);
+    public ResponseEntity<Void> transit(@PathVariable UUID deliveryId) {
+        deliveryService.markInTransit(DeliveryId.of(deliveryId), LocalDateTime.now());
         return ResponseEntity.ok().build();
     }
 
+    /** US30 — final step; triggers Payout calc and OrderDelivered AMQP event. */
     @PostMapping("/{deliveryId}/deliver")
-    public ResponseEntity<Void> markDelivered(@PathVariable String deliveryId) {
-        deliveryService.markDelivered(deliveryId);
+    public ResponseEntity<Void> deliver(@PathVariable UUID deliveryId) {
+        deliveryService.markDelivered(DeliveryId.of(deliveryId), LocalDateTime.now());
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{deliveryId}/cancel")
-    public ResponseEntity<Void> cancelDelivery(
-            @PathVariable String deliveryId,
-            @Valid @RequestBody CancelDeliveryCommand command) {
-        deliveryService.cancelDelivery(command);
-        return ResponseEntity.ok().build();
+    /** US28 — available-to-claim list. */
+    @GetMapping("/available")
+    public ResponseEntity<List<DeliveryResponse>> available() {
+        return ResponseEntity.ok(deliveryService.listAvailable().stream().map(DeliveryResponse::from).toList());
     }
 
     @GetMapping("/{deliveryId}")
-    public ResponseEntity<DeliveryResponse> getDelivery(@PathVariable String deliveryId) {
-        return ResponseEntity.ok(deliveryService.getDelivery(deliveryId));
+    public ResponseEntity<DeliveryResponse> get(@PathVariable UUID deliveryId) {
+        return ResponseEntity.ok(DeliveryResponse.from(deliveryService.get(DeliveryId.of(deliveryId))));
     }
 
     @GetMapping
-    public ResponseEntity<List<DeliveryResponse>> getDeliveries(@RequestParam(required = false) String status) {
-        if (status != null) {
-            return ResponseEntity.ok(deliveryService.getDeliveriesByStatus(status));
-        }
-        return ResponseEntity.ok(deliveryService.getAllDeliveries());
+    public ResponseEntity<List<DeliveryResponse>> forDriver(@RequestParam UUID driverId) {
+        return ResponseEntity.ok(
+                deliveryService.listForDriver(DeliveryPersonId.of(driverId)).stream()
+                        .map(DeliveryResponse::from)
+                        .toList());
     }
+
+    public record SelfClaimRequest(UUID driverId) {}
+    public record CancelClaimRequest(String reason) {}
 }
