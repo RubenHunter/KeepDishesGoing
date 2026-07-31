@@ -1,0 +1,52 @@
+### Delivery Service — HTTP scenarios (Step 1 dev)
+### Base URL: http://localhost:8082
+### Requires Keycloak JWT (driver role for courier endpoints, admin role for payout report)
+
+@baseUrl = http://localhost:8082
+@deliveryId = 33333333-3333-3333-3333-333333333333
+@driverId   = 44444444-4444-4444-4444-444444444444
+
+### 1. Register a new driver (open — but in prod would still need admin / provisioning flow)
+POST {{baseUrl}}/api/drivers
+Content-Type: application/json
+
+{ "name": "Ruben", "vehicle": "BICYCLE" }
+
+### 2. List deliveries available for self-assignment (US28)
+GET {{baseUrl}}/api/deliveries/available
+Authorization: Bearer {{driverJwt}}
+
+### 3. Courier self-assigns a delivery (US27 / US32)
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/claim
+Content-Type: application/json
+Authorization: Bearer {{driverJwt}}
+
+{ "driverId": "{{driverId}}" }
+
+### 4. Courier releases (US29) — only allowed while NOT ready-for-pickup
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/cancel-claim
+Content-Type: application/json
+Authorization: Bearer {{driverJwt}}
+
+{ "reason": "wrong pickup address" }
+
+### 5. Once order ready-for-pickup event arrives, courier picks up (US30)
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/pickup
+Authorization: Bearer {{driverJwt}}
+
+### 6. Mark in-transit
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/transit
+Authorization: Bearer {{driverJwt}}
+
+### 7. Mark delivered — triggers Payout calc + OrderDelivered AMQP event
+POST {{baseUrl}}/api/deliveries/{{deliveryId}}/deliver
+Authorization: Bearer {{driverJwt}}
+
+### 8. US35 — list courier's payouts + running total (driver role, guard enforces self-only)
+GET {{baseUrl}}/api/drivers/{{driverId}}/payouts
+Authorization: Bearer {{driverJwt}}
+
+### 9. US38 — admin PDF report (admin role)
+GET {{baseUrl}}/api/admin/payouts/report?from=2026-09-01T00:00:00&to=2026-10-31T23:59:59
+Accept: application/pdf
+Authorization: Bearer {{adminJwt}}
