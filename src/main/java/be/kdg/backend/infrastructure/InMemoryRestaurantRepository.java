@@ -61,14 +61,15 @@ public class InMemoryRestaurantRepository implements IRestaurantRepository {
         data.put(r4.getId(), r4);
         data.put(r5.getId(), r5);
 
-        // Seed dishes (merged from old InMemoryDishRepository)
+        // Seed dishes
         Dish d1 = new Dish(
                 DishId.create(),
                 new DishName("Margherita Pizza"),
                 new Description("Classic pizza with tomato and mozzarella"),
                 new Price(BigDecimal.valueOf(10), "EUR"),
                 DishCategory.MAIN_COURSE,
-                DishStatus.PUBLISHED
+                DishStatus.PUBLISHED,
+                "https://example.com/margherita.jpg"
         );
         Dish d2 = new Dish(
                 DishId.create(),
@@ -76,7 +77,8 @@ public class InMemoryRestaurantRepository implements IRestaurantRepository {
                 new Description("Fresh salmon roll"),
                 new Price(BigDecimal.valueOf(12), "EUR"),
                 DishCategory.MAIN_COURSE,
-                DishStatus.DRAFT
+                DishStatus.DRAFT,
+                null
         );
         Dish d3 = new Dish(
                 DishId.create(),
@@ -84,7 +86,8 @@ public class InMemoryRestaurantRepository implements IRestaurantRepository {
                 new Description("Italian dessert"),
                 new Price(BigDecimal.valueOf(6), "EUR"),
                 DishCategory.DESSERT,
-                DishStatus.OUT_OF_STOCK
+                DishStatus.OUT_OF_STOCK,
+                null
         );
 
         r1.getDishes().add(d1);
@@ -117,6 +120,11 @@ public class InMemoryRestaurantRepository implements IRestaurantRepository {
     @Override
     public Optional<UUID> getOwnerId(RestaurantId id) {
         return Optional.empty();
+    }
+
+    @Override
+    public Optional<String> getFullAddress(RestaurantId id) {
+        return Optional.ofNullable(data.get(id)).map(Restaurant::getFullAddress);
     }
 
     @Override

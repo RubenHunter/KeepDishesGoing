@@ -15,6 +15,7 @@ public interface EventPublisher {
             String orderId,
             String customerId,
             String restaurantId,
+            String deliveryAddress,
             List<OrderPlacedItem> items,
             LocalDateTime placedAt
     ) {

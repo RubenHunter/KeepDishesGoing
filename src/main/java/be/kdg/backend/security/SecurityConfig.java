@@ -28,6 +28,7 @@ public class SecurityConfig {
                 .sessionManagement(mgmt -> mgmt.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(reg -> reg
                         .requestMatchers("/unsecured", "/actuator/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/restaurants/mine").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/restaurants/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/restaurants/*/orders/**").permitAll()
                         .anyRequest().authenticated()
@@ -48,6 +49,7 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration().applyPermitDefaultValues();
+        cfg.addAllowedMethod("*"); // default allows only GET/HEAD/POST — PATCH/PUT/DELETE needed
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
         return source;

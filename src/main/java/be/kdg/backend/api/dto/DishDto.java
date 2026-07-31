@@ -15,7 +15,8 @@ public record DishDto(
         String description,
         Price price,
         String category,
-        String status
+        String status,
+        String imageUrl
 ) {
     public static DishDto from(Dish dish) {
         return new DishDto(
@@ -24,18 +25,19 @@ public record DishDto(
                 dish.getDescription().description(),
                 dish.getPrice(),
                 dish.getCategory().name(),
-                dish.getStatus().name()
+                dish.getStatus().name(),
+                dish.getImageUrl()
         );
     }
     public Dish to() {
         return new Dish(
-                //TODO: currency nog zien voor beste manier om te initializeren
                 DishId.create(),
                 new DishName(this.name),
                 new Description(this.description),
                 new Price(this.price.amount(), "EUR"),
                 DishCategory.valueOf(this.category),
-                DishStatus.DRAFT
+                DishStatus.DRAFT,
+                this.imageUrl
         );
     }
 }

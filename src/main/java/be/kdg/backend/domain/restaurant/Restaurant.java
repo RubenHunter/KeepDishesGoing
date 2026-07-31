@@ -31,6 +31,9 @@ public class Restaurant {
     private String openingHours;
     private String logoUrl;
 
+    // US39 — drives the price-category strategy (nullable for legacy rows)
+    private RestaurantType restaurantType;
+
     public Restaurant(RestaurantId id, RestaurantName name, RestaurantStatus status, List<Dish> dishes) {
         this.id = id;
         this.name = name;
@@ -60,14 +63,14 @@ public class Restaurant {
                 RestaurantStatus.INACTIVE,
                 new ArrayList<>(),
                 null,
-                null, null, null, null
+                null, null, null, null, null
         );
     }
 
     public static Restaurant create(String name, UUID ownerId) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("Restaurant name must not be blank");
         if (ownerId == null) throw new IllegalArgumentException("ownerId must not be null");
-        return new Restaurant(RestaurantId.create(), new RestaurantName(name), RestaurantStatus.INACTIVE, new ArrayList<>(), ownerId, null, null, null, null);
+        return new Restaurant(RestaurantId.create(), new RestaurantName(name), RestaurantStatus.INACTIVE, new ArrayList<>(), ownerId, null, null, null, null, null);
     }
 
     // US3: full required data on create
@@ -88,7 +91,8 @@ public class Restaurant {
                 fullAddress,
                 email,
                 openingHours,
-                logoUrl
+                logoUrl,
+                null
         );
     }
 
@@ -99,6 +103,18 @@ public class Restaurant {
                                     String openingHours,
                                     String logoUrl,
                                     UUID ownerId,
+                                    OwnerRestaurantUniquenessPolicy policy) {
+        return create(name, fullAddress, email, openingHours, logoUrl, ownerId, null, policy);
+    }
+
+    // US39 — type-aware variant (nullable type: price-category default strategy handles it)
+    public static Restaurant create(String name,
+                                    String fullAddress,
+                                    String email,
+                                    String openingHours,
+                                    String logoUrl,
+                                    UUID ownerId,
+                                    RestaurantType restaurantType,
                                     OwnerRestaurantUniquenessPolicy policy) {
         validateCreateArgs(name, fullAddress, email, openingHours, logoUrl, ownerId);
         if (policy == null) throw new IllegalArgumentException("policy must not be null");
@@ -114,7 +130,8 @@ public class Restaurant {
                 fullAddress,
                 email,
                 openingHours,
-                logoUrl
+                logoUrl,
+                restaurantType
         );
     }
     private static void validateCreateArgs(String name,
@@ -149,9 +166,8 @@ public class Restaurant {
     //methodes:
     //make dublicate wanneer je een published dish update en draft maakt.
     //createDraftDish(DishName dish, Price price) : DishId  -> business rule: Dish starts as DRAFT (DishStatus), must be explicitly published to be visible on menu
-    public DishId createDraftDish(DishName name, Description description, DishCategory category, Price price) {
-        //Use create static factory
-        Dish draftDish = Dish.createDraft(name, description, price, category);
+    public DishId createDraftDish(DishName name, Description description, DishCategory category, Price price, String imageUrl) {
+        Dish draftDish = Dish.createDraft(name, description, price, category, imageUrl);
         dishes.add(draftDish);
         return draftDish.getId();
     }
@@ -162,7 +178,7 @@ public class Restaurant {
     // - If target is PUBLISHED -> create a new DRAFT copy with updates and return its id.
     // - If target is DRAFT/other -> update in place and keep it DRAFT.
     // Name is immutable; reject attempts to change it.
-    public DishId updateDraftDish(DishId dishId, String name, String description, Price price, DishCategory category) {
+    public DishId updateDraftDish(DishId dishId, String name, String description, Price price, DishCategory category, String imageUrl) {
         Dish current = findDishById(dishId);
 
         if (name != null && !name.equals(current.getName().name())) {
@@ -172,7 +188,7 @@ public class Restaurant {
         if (current.getStatus() == DishStatus.PUBLISHED) {
             Dish draft = findDraftByName(current.getName())
                     .orElseGet(() -> {
-                        Dish d = Dish.createDraft(current.getName(), current.getDescription(), current.getPrice(), current.getCategory());
+                        Dish d = Dish.createDraft(current.getName(), current.getDescription(), current.getPrice(), current.getCategory(), current.getImageUrl());
                         dishes.add(d);
                         return d;
                     });
@@ -181,6 +197,7 @@ public class Restaurant {
             draft.updateDescription(current.getDescription());
             draft.updatePrice(current.getPrice());
             draft.updateCategory(current.getCategory());
+            draft.updateImageUrl(current.getImageUrl());
 
             // apply incoming updates
             if (description != null) {
@@ -191,6 +208,9 @@ public class Restaurant {
             }
             if (category != null) {
                 draft.updateCategory(category);
+            }
+            if (imageUrl != null) {
+                draft.updateImageUrl(imageUrl);
             }
             draft.markAsDraft();
             return draft.getId();
@@ -204,11 +224,13 @@ public class Restaurant {
             if (category != null) {
                 current.updateCategory(category);
             }
+            if (imageUrl != null) {
+                current.updateImageUrl(imageUrl);
+            }
             current.markAsDraft();
-            return dishId;
+            return current.getId();
         }
     }
-
 
     // Publish a dish and delete any other published version with the same name
     // US10: publish with cap of 10 published dishes; allow replacement by name
@@ -251,10 +273,13 @@ public class Restaurant {
         dish.updatePrice(newPrice);
     }
 
-    //getPublishedMenu(): List<Dish>  -> only return dishes with DishStatus PUBLISHED
+    /**
+     * Customer menu: PUBLISHED (orderable) + OUT_OF_STOCK dishes.
+     * Spec: out-of-stock stays VISIBLE but cannot be added to the cart (US9).
+     */
     public List<Dish> getPublishedMenu() {
         return dishes.stream()
-                .filter(d -> d.getStatus() == DishStatus.PUBLISHED)
+                .filter(d -> d.getStatus() == DishStatus.PUBLISHED || d.getStatus() == DishStatus.OUT_OF_STOCK)
                 .toList();
     }
 

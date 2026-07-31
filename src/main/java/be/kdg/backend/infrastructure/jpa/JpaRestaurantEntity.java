@@ -5,6 +5,7 @@ import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.domain.restaurant.RestaurantId;
 import be.kdg.backend.domain.restaurant.RestaurantName;
 import be.kdg.backend.domain.restaurant.RestaurantStatus;
+import be.kdg.backend.domain.restaurant.RestaurantType;
 import jakarta.persistence.*;
 import lombok.Setter;
 
@@ -51,6 +52,10 @@ public class JpaRestaurantEntity {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Enumerated(value = EnumType.STRING)
+    @Column(name = "restaurant_type")
+    private RestaurantType restaurantType;
+
     protected JpaRestaurantEntity() {
     }
 
@@ -92,6 +97,7 @@ public class JpaRestaurantEntity {
         e.email = r.getEmail();
         e.openingHours = r.getOpeningHours();
         e.logoUrl = r.getLogoUrl();
+        e.restaurantType = r.getRestaurantType();
         for (Dish d : r.getDishes()) {
             JpaDishEntity child = JpaDishEntity.fromDomain(d, e);
             e.addDish(child);
@@ -115,7 +121,8 @@ public class JpaRestaurantEntity {
                 this.fullAddress,
                 this.email,
                 this.openingHours,
-                this.logoUrl
+                this.logoUrl,
+                this.restaurantType
         );
     }
 
@@ -127,6 +134,7 @@ public class JpaRestaurantEntity {
         this.email = r.getEmail();
         this.openingHours = r.getOpeningHours();
         this.logoUrl = r.getLogoUrl();
+        this.restaurantType = r.getRestaurantType();
 
         Map<UUID, JpaDishEntity> current = this.dishes.stream()
                 .collect(Collectors.toMap(JpaDishEntity::getId, Function.identity()));

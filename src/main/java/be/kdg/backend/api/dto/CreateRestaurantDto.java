@@ -5,8 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 
 public record CreateRestaurantDto(
         @NotBlank String name,
-        String fullAddress,
-        @Email String email,
-        String openingHours,
-        String logo
+        @NotBlank String fullAddress,
+        @Email @NotBlank String email,
+        @NotBlank String openingHours,
+        @NotBlank String logo,
+        String restaurantType
 ) {}

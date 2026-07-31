@@ -19,4 +19,7 @@ public interface JpaRestaurantRepository extends JpaRepository<JpaRestaurantEnti
     boolean existsByOwnerId(UUID ownerId);
 
     Optional<JpaRestaurantEntity> findByOwnerId(UUID ownerId);
+
+    @Query("select r.fullAddress from JpaRestaurantEntity r where r.id = :id")
+    Optional<String> findFullAddressById(@Param("id") UUID id);
 }

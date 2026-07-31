@@ -40,6 +40,9 @@ public class JpaDishEntity {
     @Column
     private DishStatus status;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
     protected JpaDishEntity() {
     }
 
@@ -57,9 +60,10 @@ public class JpaDishEntity {
         e.id = d.getId().id();
         e.name = d.getName().name();
         e.description = d.getDescription() == null ? null : d.getDescription().description();
-        e.price = d.getPrice().amount(); // currency not persisted in this table voor als we altijd ervan uitgaan dat het EU is en in fronend we omzetten naar andere currencies
+        e.price = d.getPrice().amount();
         e.category = d.getCategory();
         e.status = d.getStatus();
+        e.imageUrl = d.getImageUrl();
         e.setRestaurant(restaurant);
         return e;
     }
@@ -69,9 +73,10 @@ public class JpaDishEntity {
                 new DishId(id),
                 new DishName(name),
                 new Description(description),
-                new Price(price, "EUR"), //TODO: currency
+                new Price(price, "EUR"),
                 category,
-                status
+                status,
+                imageUrl
         );
     }
 
@@ -81,6 +86,7 @@ public class JpaDishEntity {
         this.price = d.getPrice() != null ? d.getPrice().amount() : null;
         this.category = d.getCategory();
         this.status = d.getStatus();
+        this.imageUrl = d.getImageUrl();
         // name stays immutable by domain rule
     }
 

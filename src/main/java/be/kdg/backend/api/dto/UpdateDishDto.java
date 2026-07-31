@@ -7,6 +7,7 @@ public record UpdateDishDto(
         String name,
         String description,
         Price price,
-        DishCategory category
+        DishCategory category,
+        String imageUrl
 ) {}
 

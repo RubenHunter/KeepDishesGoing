@@ -34,11 +34,12 @@ public class DishService {
                                   DishName name,
                                   Description description,
                                   Price price,
-                                  DishCategory category) {
+                                  DishCategory category,
+                                  String imageUrl) {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
 
-        DishId id = restaurant.createDraftDish(name, description, category, price);
+        DishId id = restaurant.createDraftDish(name, description, category, price, imageUrl);
         restaurantRepository.save(restaurant);
         return id;
     }
@@ -73,7 +74,8 @@ public class DishService {
                 dto.name(),
                 dto.description(),
                 dto.price(),
-                dto.category()
+                dto.category(),
+                dto.imageUrl()
         );
 
         restaurantRepository.save(restaurant);

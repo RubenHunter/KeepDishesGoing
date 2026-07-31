@@ -1,47 +1,34 @@
 package be.kdg.backend.application.messaging.handlers;
 
 import be.kdg.backend.application.messaging.EventPublisher;
-import be.kdg.backend.application.messaging.InboundEvents;
-import be.kdg.backend.application.messaging.OutboundEventPublisher;
+import be.kdg.backend.application.messaging.PendingOrderStore;
 import be.kdg.backend.infrastructure.messaging.RabbitConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
 /**
  * Consumes {@code order.placed} (published by order-service). Per event catalog.
  *
- * Auto-accepts the order for demo flow — publishes {@code order.accepted} immediately.
- * In production this would run decision logic (US22/23/24: opening hours, feasibility)
- * and wait for the restaurant owner to accept/reject via an HTTP endpoint.
+ * Per US22/23/24 the OWNER decides (accept/reject via the UI or HTTP endpoint).
+ * The previous demo stub auto-accepted every order, which defeated US22/23/24 —
+ * disabled: we only log the event here, the decision events come from
+ * {@code OrderEventController} (owner action) instead.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class OrderPlacedHandler {
 
-    private final OutboundEventPublisher outboundEventPublisher;
+    private final PendingOrderStore pendingOrderStore;
 
     @RabbitListener(queues = RabbitConfig.Q_RESTAURANT_ORDER_EVENTS)
     public void handle(EventPublisher.OrderPlacedEvent event) {
-        log.info("Consumed OrderPlaced orderId={} restaurantId={} items={}",
+        log.info("Consumed OrderPlaced orderId={} restaurantId={} items={} — awaiting owner decision (US22)",
                 event.orderId(), event.restaurantId(), event.items().size());
-
-        try {
-            var acceptedEvent = new InboundEvents.OrderAcceptedEvent(
-                    UUID.fromString(event.orderId()),
-                    UUID.fromString(event.restaurantId()),
-                    "Pickup at restaurant",
-                    LocalDateTime.now()
-            );
-            outboundEventPublisher.publishOrderAccepted(acceptedEvent);
-            log.info("Auto-accepted order {} — published OrderAccepted", event.orderId());
-        } catch (Exception e) {
-            log.error("Failed to process OrderPlaced {}: {}", event.orderId(), e.getMessage(), e);
+        if (event.deliveryAddress() != null && !event.deliveryAddress().isBlank()) {
+            pendingOrderStore.put(event.orderId(), event.deliveryAddress());
         }
     }
 }

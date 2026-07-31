@@ -19,7 +19,7 @@ public final class InboundEvents {
 
     private InboundEvents() {}
 
-    public record OrderAcceptedEvent(UUID orderId, UUID restaurantId, String pickupAddress, LocalDateTime acceptedAt) {
+    public record OrderAcceptedEvent(UUID orderId, UUID restaurantId, String pickupAddress, String deliveryAddress, LocalDateTime acceptedAt) {
         public OrderAcceptedEvent { Objects.requireNonNull(orderId); }
     }
 

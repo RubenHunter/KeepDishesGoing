@@ -18,9 +18,10 @@ public class Dish {
     private Price price;
     private DishCategory category;
     private DishStatus status;
+    private String imageUrl;
 
     // Static factory to enforce domain creation rules
-    public static Dish createDraft(DishName name, Description description, Price price, DishCategory category) {
+    public static Dish createDraft(DishName name, Description description, Price price, DishCategory category, String imageUrl) {
         if (name == null) {
             throw new ValidationException("Dish name must not be null");
         }
@@ -38,7 +39,8 @@ public class Dish {
                 safeDescription,
                 price,
                 safeCategory,
-                DishStatus.DRAFT
+                DishStatus.DRAFT,
+                imageUrl
         );
     }
 
@@ -78,6 +80,10 @@ public class Dish {
 
     public void updateCategory(DishCategory newCategory) {
         this.category = newCategory;
+    }
+
+    public void updateImageUrl(String newImageUrl) {
+        this.imageUrl = newImageUrl;
     }
 
     public boolean isAvailable(Price price) {

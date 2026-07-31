@@ -59,6 +59,11 @@ public class DbRestaurantRepository implements IRestaurantRepository {
     }
 
     @Override
+    public Optional<String> getFullAddress(RestaurantId id) {
+        return jpaRestaurantRepository.findFullAddressById(id.id());
+    }
+
+    @Override
     public boolean existsByOwnerId(UUID ownerId) {
         return jpaRestaurantRepository.existsByOwnerId(ownerId);
     }

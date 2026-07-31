@@ -46,7 +46,8 @@ public class DishController {
                 new DishName(dto.name()),
                 new Description(dto.description()),
                 dto.price(),
-                categoryEnum
+                categoryEnum,
+                dto.imageUrl()
         );
 
         return ResponseEntity.created(

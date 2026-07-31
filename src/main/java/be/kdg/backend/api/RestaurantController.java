@@ -10,6 +10,7 @@ import be.kdg.backend.domain.dish.DishStatus;
 import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.domain.restaurant.RestaurantId;
 import be.kdg.backend.domain.restaurant.RestaurantStatus;
+import be.kdg.backend.domain.restaurant.RestaurantType;
 import be.kdg.backend.infrastructure.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @RestController
@@ -44,13 +46,17 @@ public class RestaurantController {
     @PostMapping({"", "/"})
     public ResponseEntity<RestaurantDto> createRestaurant(@Valid @RequestBody CreateRestaurantDto dto, JwtAuthenticationToken jwt) {
         UUID ownerId = UUID.fromString(jwt.getToken().getSubject());
+        RestaurantType type = (dto.restaurantType() == null || dto.restaurantType().isBlank())
+                ? null
+                : RestaurantType.valueOf(dto.restaurantType().toUpperCase(Locale.ROOT));
         RestaurantId createdId = restaurantService.createRestaurant(
                 dto.name(),
                 dto.fullAddress(),
                 dto.email(),
                 dto.openingHours(),
                 dto.logo(),
-                ownerId
+                ownerId,
+                type
         );
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -58,6 +64,22 @@ public class RestaurantController {
                 .toUri();
 
         return ResponseEntity.created(location).build();
+    }
+
+    /*
+    /restaurants/mine
+    get, auth -> owner, resp: RestaurantDto (404 when the owner has none yet)
+     */
+    @GetMapping("/mine")
+    public ResponseEntity<RestaurantDto> getMyRestaurant(JwtAuthenticationToken jwt) {
+        if (jwt == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        UUID ownerId = UUID.fromString(jwt.getToken().getSubject());
+        return restaurantService.getRestaurantByOwner(ownerId)
+                .map(RestaurantDto::from)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping({"", "/"})

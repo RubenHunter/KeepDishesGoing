@@ -12,5 +12,6 @@ public record CreateDishDto(
         @Size(max = 400, message = "Description cannot be longer than 400 characters")
         String description,
         Price price,
-        String category
+        String category,
+        String imageUrl
 ) {}
