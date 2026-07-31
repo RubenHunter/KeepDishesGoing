@@ -1,112 +1,66 @@
-import { getOrCreateCustomerId } from "../state/session";
+import { API } from "../config.ts";
+import type {
+	CheckoutResponse,
+	OrderDetail,
+	Tracking,
+} from "../domain/Order.ts";
+import { request } from "./http.ts";
 
-export interface Cart {
-    cartId: string;
-    customerId: string;
-    restaurantId: string | null;
-    items: CartItem[];
-    totalAmount: number;
-    currency: string;
-}
-export interface CartItem {
-    menuItemId: string;
-    itemName: string;
-    quantity: number;
-    unitPrice: number;
-    lineTotal: number;
-    currency: string;
-}
+const base = `${API.order}/orders`;
 
-const ORDER_BASE = "/order-api/api";
+export type CheckoutRequest = {
+	cartId: string;
+	customerId: string;
+	customerName: string;
+	street: string;
+	number: string;
+	postalCode: string;
+	city: string;
+	country: string;
+	email: string;
+};
 
-export async function getCart(customerId = getOrCreateCustomerId()): Promise<Cart> {
-    const res = await fetch(`${ORDER_BASE}/cart/${customerId}`);
-    if (!res.ok) throw new Error("Failed to fetch cart");
-    return res.json();
-}
-
-export async function addItemToCart(params: {
-    customerId?: string;
-    restaurantId: string;
-    menuItemId: string;
-    itemName: string;
-    quantity: number;
-    unitPrice: number;
-}): Promise<void> {
-    const cid = params.customerId ?? getOrCreateCustomerId();
-    const res = await fetch(`${ORDER_BASE}/cart/${cid}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            menuItemId: params.menuItemId,
-            itemName: params.itemName,
-            quantity: params.quantity,
-            unitPrice: params.unitPrice,
-            restaurantId: params.restaurantId,
-        }),
-    });
-    if (!res.ok) throw new Error("Failed to add item");
+/** US17/US18 - server validates items + prices, then locks content and price. */
+export function checkout(body: CheckoutRequest): Promise<CheckoutResponse> {
+	return request(`${base}/checkout`, { method: "POST", body });
 }
 
-export async function updateCartQuantity(params: {
-    customerId?: string;
-    menuItemId: string;
-    quantity: number;
-}): Promise<void> {
-    const cid = params.customerId ?? getOrCreateCustomerId();
-    const res = await fetch(`${ORDER_BASE}/cart/${cid}/items/${params.menuItemId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: params.quantity }),
-    });
-    if (!res.ok) throw new Error("Failed to update quantity");
+/** US20 - stub payment provider confirmation (webhook endpoint accepts POST). */
+export function confirmPayment(paymentRef: string): Promise<void> {
+	return request(`${API.order}/payments/${encodeURIComponent(paymentRef)}/confirm`, {
+		method: "POST",
+	});
 }
 
-export async function removeFromCart(params: {
-    customerId?: string;
-    menuItemId: string;
-}): Promise<void> {
-    const cid = params.customerId ?? getOrCreateCustomerId();
-    const res = await fetch(`${ORDER_BASE}/cart/${cid}/items/${params.menuItemId}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Failed to remove item");
+/** Places the order after (stub) payment - starts the 5-min decision window (US23). */
+export function placeOrder(orderId: string): Promise<void> {
+	return request(`${base}/${orderId}/place`, { method: "POST" });
 }
 
-export async function clearCart(customerId = getOrCreateCustomerId()): Promise<void> {
-    const res = await fetch(`${ORDER_BASE}/cart/${customerId}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Failed to clear cart");
+/** Customer cancellation while PLACED/ACCEPTED. */
+export function cancelOrder(orderId: string, reason: string): Promise<void> {
+	return request(`${base}/${orderId}/cancel`, { method: "POST", body: { reason } });
 }
 
-export interface CreateOrderItemRequest {
-    menuItemId: string;
-    itemName: string;
-    quantity: number;
-    unitPrice: number;
-}
-export interface CreateOrderRequest {
-    customerId: string;
-    restaurantId: string;
-    deliveryAddress: string;
-    customerEmail: string;
-    items: CreateOrderItemRequest[];
-}
-export interface OrderResponse {
-    orderId: string;
-    message: string;
-    status: string;
+export function getOrder(orderId: string): Promise<OrderDetail> {
+	return request(`${base}/${orderId}`);
 }
 
-export async function createOrder(req: CreateOrderRequest): Promise<OrderResponse> {
-    const res = await fetch(`${ORDER_BASE}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(req),
-    });
-    if (!res.ok) throw new Error("Failed to create order");
-    return res.json();
+/** US21/US33 - tracking read model (status + lifecycle timestamps + events). */
+export function getTracking(orderId: string): Promise<Tracking> {
+	return request(`${base}/${orderId}/tracking`);
 }
 
-export async function placeOrderValidated(orderId: string): Promise<OrderResponse> {
-    const res = await fetch(`${ORDER_BASE}/orders/${orderId}/place-validated`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to place order");
-    return res.json();
+export type OrderSummary = {
+	orderId: string;
+	customerName: string;
+	status: string;
+	totalAmount: number;
+	currency: string;
+	placedAt: string | null;
+	itemCount: number;
+};
+
+export function listOrdersByRestaurant(restaurantId: string): Promise<OrderSummary[]> {
+	return request(`${base}/restaurant/${restaurantId}`);
 }
