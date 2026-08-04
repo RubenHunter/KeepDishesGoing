@@ -142,6 +142,7 @@ public class OrderService {
                 order.id().value().toString(),
                 order.customerId().value().toString(),
                 order.restaurantId().value().toString(),
+                order.deliveryAddress().singleLine(),
                 order.items().stream()
                         .map(it -> new EventPublisher.OrderPlacedEvent.OrderPlacedItem(
                                 it.getMenuItemId().value().toString(),
@@ -160,7 +161,10 @@ public class OrderService {
         Order order = loadOrder(orderId);
         order.cancel(reason);
         orderRepository.save(order);
-        log.info("Order {} CANCELLED", orderId);
+        var event = new EventPublisher.OrderCancelledEvent(
+                order.id().value().toString(), reason, order.cancelledAt());
+        eventPublisher.publishOrderCancelled(event);
+        log.info("Order {} CANCELLED — published OrderCancelled", orderId);
     }
 
     public Order loadOrder(UUID orderId) {
