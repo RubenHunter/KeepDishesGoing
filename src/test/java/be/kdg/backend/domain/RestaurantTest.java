@@ -62,7 +62,7 @@ class RestaurantTest {
         Restaurant r = Restaurant.create("Resto");
 
         // Act
-        DishId id = r.createDraftDish(new DishName("Pasta"), new Description("Fresh"), DishCategory.MAIN_COURSE, eur("9.50"));
+        DishId id = r.createDraftDish(new DishName("Pasta"), new Description("Fresh"), DishCategory.MAIN_COURSE, eur("9.50"), null);
 
         // Assert
         assertNotNull(id);
@@ -76,7 +76,7 @@ class RestaurantTest {
     void updateDraftDish_inPlace_onDraft() {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
-        DishId id = r.createDraftDish(new DishName("Burger"), new Description("Beef"), DishCategory.MAIN_COURSE, eur("12.00"));
+        DishId id = r.createDraftDish(new DishName("Burger"), new Description("Beef"), DishCategory.MAIN_COURSE, eur("12.00"), null);
 
         // Act
         DishId result = r.updateDraftDish(id, "Burger", "Beef+Cheese", eur("13.00"), DishCategory.MAIN_COURSE);
@@ -93,7 +93,7 @@ class RestaurantTest {
     void updateDraftDish_fromPublished_createsNewDraft() {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
-        DishId pubId = r.createDraftDish(new DishName("Pizza"), new Description("Margarita"), DishCategory.MAIN_COURSE, eur("8.00"));
+        DishId pubId = r.createDraftDish(new DishName("Pizza"), new Description("Margarita"), DishCategory.MAIN_COURSE, eur("8.00"), null);
         r.publishDish(pubId);
 
         // Act
@@ -114,9 +114,9 @@ class RestaurantTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         DishName name = new DishName("Sushi");
-        DishId pubId = r.createDraftDish(name, new Description("Classic"), DishCategory.MAIN_COURSE, eur("10.00"));
+        DishId pubId = r.createDraftDish(name, new Description("Classic"), DishCategory.MAIN_COURSE, eur("10.00"), null);
         r.publishDish(pubId);
-        DishId existingDraft = r.createDraftDish(name, new Description("Scratch"), DishCategory.MAIN_COURSE, eur("11.00"));
+        DishId existingDraft = r.createDraftDish(name, new Description("Scratch"), DishCategory.MAIN_COURSE, eur("11.00"), null);
 
         // Act
         DishId result = r.updateDraftDish(pubId, "Sushi", "Classic XL", eur("12.00"), DishCategory.MAIN_COURSE);
@@ -134,9 +134,9 @@ class RestaurantTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         DishName name = new DishName("Pizza");
-        DishId oldId = r.createDraftDish(name, new Description("Old"), DishCategory.MAIN_COURSE, eur("7.00"));
+        DishId oldId = r.createDraftDish(name, new Description("Old"), DishCategory.MAIN_COURSE, eur("7.00"), null);
         r.publishDish(oldId);
-        DishId newId = r.createDraftDish(name, new Description("New"), DishCategory.MAIN_COURSE, eur("8.00"));
+        DishId newId = r.createDraftDish(name, new Description("New"), DishCategory.MAIN_COURSE, eur("8.00"), null);
 
         // Act
         r.publishDish(newId);
@@ -156,7 +156,7 @@ class RestaurantTest {
     void depublish_shouldMoveToDraft() {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
-        DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, new Price(new BigDecimal("4.00"), "EUR"));
+        DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, new Price(new BigDecimal("4.00"), "EUR"), null);
         r.publishDish(id);
 
         // Act
@@ -170,7 +170,7 @@ class RestaurantTest {
     void markOutOfStock_shouldSetOutOfStock() {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
-        DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, new Price(new BigDecimal("4.00"), "EUR"));
+        DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, new Price(new BigDecimal("4.00"), "EUR"), null);
         r.publishDish(id);
 
         // Act
@@ -184,8 +184,8 @@ class RestaurantTest {
     void getPublishedMenu_shouldReturnOnlyPublished() {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
-        DishId d1 = r.createDraftDish(new DishName("DishA"), new Description(""), DishCategory.MAIN_COURSE, eur("5.00"));
-        DishId d2 = r.createDraftDish(new DishName("DishB"), new Description(""), DishCategory.MAIN_COURSE, eur("6.00"));
+        DishId d1 = r.createDraftDish(new DishName("DishA"), new Description(""), DishCategory.MAIN_COURSE, eur("5.00"), null);
+        DishId d2 = r.createDraftDish(new DishName("DishB"), new Description(""), DishCategory.MAIN_COURSE, eur("6.00"), null);
         r.publishDish(d2);
 
         // Act
@@ -200,7 +200,7 @@ class RestaurantTest {
     void shouldNotAllowNameChangeOnUpdate() {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
-        DishId id = r.createDraftDish(new DishName("Tea"), new Description("Hot"), DishCategory.BEVERAGE, eur("2.00"));
+        DishId id = r.createDraftDish(new DishName("Tea"), new Description("Hot"), DishCategory.BEVERAGE, eur("2.00"), null);
 
         // Act + Assert
         assertThrows(IllegalArgumentException.class, () ->
@@ -211,7 +211,7 @@ class RestaurantTest {
     void shouldValidatePublishConstraints() {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
-        DishId id = r.createDraftDish(new DishName("Tea"), new Description("Hot"), DishCategory.BEVERAGE, eur("2.00"));
+        DishId id = r.createDraftDish(new DishName("Tea"), new Description("Hot"), DishCategory.BEVERAGE, eur("2.00"), null);
         r.publishDish(id);
 
         // Act + Assert

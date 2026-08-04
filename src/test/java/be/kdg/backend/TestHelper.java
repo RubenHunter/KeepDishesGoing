@@ -37,7 +37,8 @@ public class TestHelper {
                 new DishName(name),
                 new Description(description),
                 new Price(amount, currency),
-                category
+                category,
+                null
         );
     }
 

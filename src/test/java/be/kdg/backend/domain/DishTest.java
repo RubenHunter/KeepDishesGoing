@@ -19,7 +19,7 @@ class DishTest {
         Description desc = new Description("Hot");
 
         // Act
-        Dish d = Dish.createDraft(name, desc, eur("2.00"), DishCategory.BEVERAGE);
+        Dish d = Dish.createDraft(name, desc, eur("2.00"), DishCategory.BEVERAGE, null);
 
         // Assert
         assertNotNull(d.getId());
@@ -33,7 +33,7 @@ class DishTest {
     @Test
     void publish_shouldBecomePublished() {
         // Arrange
-        Dish d = Dish.createDraft(new DishName("Soup"), new Description("Tomato"), eur("4.00"), DishCategory.APPETIZER);
+        Dish d = Dish.createDraft(new DishName("Soup"), new Description("Tomato"), eur("4.00"), DishCategory.APPETIZER, null);
 
         // Act
         d.publish();
@@ -45,7 +45,7 @@ class DishTest {
     @Test
     void markAsDraft_fromPublished_shouldBecomeDraft() {
         // Arrange
-        Dish d = Dish.createDraft(new DishName("Coffee"), new Description("Black"), eur("2.50"), DishCategory.BEVERAGE);
+        Dish d = Dish.createDraft(new DishName("Coffee"), new Description("Black"), eur("2.50"), DishCategory.BEVERAGE, null);
         d.publish();
 
         // Act
@@ -58,7 +58,7 @@ class DishTest {
     @Test
     void markOutOfStock_shouldBecomeOutOfStock() {
         // Arrange
-        Dish d = Dish.createDraft(new DishName("Fries"), new Description("Salt"), eur("3.00"), DishCategory.APPETIZER);
+        Dish d = Dish.createDraft(new DishName("Fries"), new Description("Salt"), eur("3.00"), DishCategory.APPETIZER, null);
         d.publish();
 
         // Act
@@ -71,7 +71,7 @@ class DishTest {
     @Test
     void updateFields_shouldChangeDescriptionPriceAndCategory() {
         // Arrange
-        Dish d = Dish.createDraft(new DishName("Tea"), new Description("Hot"), eur("2.00"), DishCategory.BEVERAGE);
+        Dish d = Dish.createDraft(new DishName("Tea"), new Description("Hot"), eur("2.00"), DishCategory.BEVERAGE, null);
 
         // Act
         d.updateDescription(new Description("Iced"));
