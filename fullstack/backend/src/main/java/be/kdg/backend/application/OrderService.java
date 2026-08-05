@@ -176,6 +176,11 @@ public class OrderService {
         return orderRepository.findByCustomerId(CustomerId.of(customerId));
     }
 
+    /** Owner console — all orders for a restaurant. */
+    public List<Order> listOrdersForRestaurant(UUID restaurantId) {
+        return orderRepository.findByRestaurantId(RestaurantId.of(restaurantId.toString()));
+    }
+
     // --- Handler entry points (called by AMQP consumers — not exposed via HTTP) ---
 
     public void onOrderAccepted(UUID orderId, LocalDateTime acceptedAt) {

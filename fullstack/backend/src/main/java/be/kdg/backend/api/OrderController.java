@@ -78,6 +78,39 @@ public class OrderController {
         ));
     }
 
+    /**
+     * Owner console — all orders for a restaurant, as a compact summary.
+     * Lives in order-service because it owns the Order aggregate.
+     */
+    @GetMapping("/restaurant/{restaurantId}")
+    public ResponseEntity<List<OrderSummary>> listByRestaurant(@PathVariable UUID restaurantId) {
+        List<Order> orders = orderService.listOrdersForRestaurant(restaurantId);
+        return ResponseEntity.ok(orders.stream().map(OrderSummary::from).toList());
+    }
+
+    /** Compact summary for the owner order list (avoid exposing full PII). */
+    public record OrderSummary(
+            UUID orderId,
+            String customerName,
+            String status,
+            double totalAmount,
+            String currency,
+            java.time.LocalDateTime placedAt,
+            int itemCount
+    ) {
+        public static OrderSummary from(Order o) {
+            return new OrderSummary(
+                    o.id().value(),
+                    o.customerName(),
+                    o.status().name(),
+                    o.totalAmount().amount().doubleValue(),
+                    o.totalAmount().currency(),
+                    o.placedAt(),
+                    o.items().size()
+            );
+        }
+    }
+
     public record CancelReason(String reason) {}
 
     public record OrderDetail(
