@@ -78,11 +78,35 @@ public class RestRestaurantGateway implements RestaurantGateway {
 
     @Override
     public RestaurantDto getRestaurant(UUID restaurantId) {
-        return restaurantClient.get()
+        // restaurant-service returns status (ACTIVE/INACTIVE) — map it to the open flag here.
+        UpstreamRestaurantDto upstream = restaurantClient.get()
                 .uri(restaurantProperties.apiBase() + "/{id}", restaurantId)
                 .retrieve()
-                .body(RestaurantDto.class);
+                .body(UpstreamRestaurantDto.class);
+        if (upstream == null) throw new IllegalStateException("Empty restaurant response for " + restaurantId);
+        return new RestaurantDto(
+                upstream.id(),
+                upstream.name(),
+                upstream.fullAddress(),
+                upstream.email(),
+                upstream.openingHours(),
+                upstream.logoUrl(),
+                upstream.restaurantType(),
+                "ACTIVE".equalsIgnoreCase(upstream.status())
+        );
     }
+
+    /** Wire format of restaurant-service's public RestaurantDto. */
+    private record UpstreamRestaurantDto(
+            UUID id,
+            String name,
+            String status,
+            String fullAddress,
+            String email,
+            String openingHours,
+            String logoUrl,
+            String restaurantType
+    ) {}
 
     @Override
     public List<DishDto> getMenu(UUID restaurantId) {
