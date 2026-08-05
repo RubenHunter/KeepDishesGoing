@@ -3,12 +3,12 @@ package be.kdg.backend.api;
 import be.kdg.backend.api.dto.DeliveryResponse;
 import be.kdg.backend.application.DeliveryService;
 import be.kdg.backend.domain.delivery.Delivery;
+import be.kdg.backend.domain.payout.PayoutPolicy;
 import be.kdg.backend.domain.shared.DeliveryId;
 import be.kdg.backend.domain.shared.DeliveryPersonId;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -25,6 +25,7 @@ import java.util.UUID;
 public class DeliveryController {
 
     private final DeliveryService deliveryService;
+    private final PayoutPolicy payoutPolicy;
 
     /** US27 — courier claims a delivery (self-assign). */
     @PostMapping("/{deliveryId}/claim")
@@ -62,19 +63,22 @@ public class DeliveryController {
     /** US28 — available-to-claim list. */
     @GetMapping("/available")
     public ResponseEntity<List<DeliveryResponse>> available() {
-        return ResponseEntity.ok(deliveryService.listAvailable().stream().map(DeliveryResponse::from).toList());
+        return ResponseEntity.ok(deliveryService.listAvailable().stream()
+                .map(d -> DeliveryResponse.from(d, payoutPolicy))
+                .toList());
     }
 
     @GetMapping("/{deliveryId}")
     public ResponseEntity<DeliveryResponse> get(@PathVariable UUID deliveryId) {
-        return ResponseEntity.ok(DeliveryResponse.from(deliveryService.get(DeliveryId.of(deliveryId))));
+        return ResponseEntity.ok(DeliveryResponse.from(
+                deliveryService.get(DeliveryId.of(deliveryId)), payoutPolicy));
     }
 
     @GetMapping
     public ResponseEntity<List<DeliveryResponse>> forDriver(@RequestParam UUID driverId) {
         return ResponseEntity.ok(
                 deliveryService.listForDriver(DeliveryPersonId.of(driverId)).stream()
-                        .map(DeliveryResponse::from)
+                        .map(d -> DeliveryResponse.from(d, payoutPolicy))
                         .toList());
     }
 
