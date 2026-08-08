@@ -2,25 +2,14 @@ package be.kdg.backend.application.restaurant;
 
 import org.springframework.stereotype.Component;
 
-/**
- * Default price-category strategy per PDF table:
- *   FAST_FOOD / BROODJESZAKEN   → €  (avg &lt; €10)
- * This strategy supports the simple-subset type cases; additional strategies
- * added as separate {@link PriceCategoryStrategy} beans (Open/Closed, rule #8).
- */
+/** Fast food / broodjeszaken: avg <€10 → €. With avgPrice: under €10 stays €, €10+ upgrades to €€. */
 @Component
 public class FastFoodPriceCategoryStrategy implements PriceCategoryStrategy {
-
-    @Override
-    public boolean supports(String restaurantType) {
-        return "FAST_FOOD".equalsIgnoreCase(restaurantType)
-                || "BROODJESZAKEN".equalsIgnoreCase(restaurantType)
-                || restaurantType == null
-                || restaurantType.isBlank(); // fall-back path for missing type
+    @Override public boolean supports(String restaurantType) {
+        return "FAST_FOOD".equalsIgnoreCase(restaurantType) || "BROODJESZAKEN".equalsIgnoreCase(restaurantType);
     }
-
-    @Override
-    public String symbolFor(String restaurantType) {
+    @Override public String symbolFor(String restaurantType, Double avgPrice) {
+        if (avgPrice != null && avgPrice >= 10.0) return "€€";
         return "€";
     }
 }

@@ -35,12 +35,27 @@ public class RestaurantProxyController {
         return ResponseEntity.ok(restaurantGateway.getMenu(id));
     }
 
-    /** US39 — price category symbol for restaurant type. */
+    /** US39 — price category symbol for restaurant type + average menu price. */
     @GetMapping("/{id}/price-category")
     public ResponseEntity<PriceCategoryResponse> priceCategory(@PathVariable UUID id) {
         RestaurantGateway.RestaurantDto dto = restaurantGateway.getRestaurant(id);
-        RestaurantGateway.PriceSymbol symbol = priceCategoryResolver.resolve(dto.restaurantType());
+        Double avgPrice = computeAveragePrice(id);
+        RestaurantGateway.PriceSymbol symbol = priceCategoryResolver.resolve(dto.restaurantType(), avgPrice);
         return ResponseEntity.ok(new PriceCategoryResponse(symbol.symbol()));
+    }
+
+    private Double computeAveragePrice(UUID restaurantId) {
+        List<RestaurantGateway.DishDto> menu = restaurantGateway.getMenu(restaurantId);
+        if (menu.isEmpty()) return null;
+        double total = 0;
+        int count = 0;
+        for (var d : menu) {
+            if (d.price() != null && d.price().amount() != null) {
+                total += d.price().amount().doubleValue();
+                count++;
+            }
+        }
+        return count < 2 ? null : total / count;
     }
 
     public record PriceCategoryResponse(String symbol) {}

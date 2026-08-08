@@ -25,14 +25,14 @@ public class PriceCategoryResolver {
                 .orElseThrow(() -> new IllegalStateException("No default PriceCategoryStrategy for " + defaultType));
     }
 
-    public RestaurantGateway.PriceSymbol resolve(String restaurantType) {
+    public RestaurantGateway.PriceSymbol resolve(String restaurantType, Double avgPrice) {
         if (restaurantType == null || restaurantType.isBlank()) {
-            return new RestaurantGateway.PriceSymbol(defaultStrategy.symbolFor(null));
+            return new RestaurantGateway.PriceSymbol(defaultStrategy.symbolFor(null, avgPrice));
         }
         return strategies.stream()
                 .filter(s -> s.supports(restaurantType))
                 .findFirst()
-                .map(s -> new RestaurantGateway.PriceSymbol(s.symbolFor(restaurantType)))
-                .orElseGet(() -> new RestaurantGateway.PriceSymbol(defaultStrategy.symbolFor(restaurantType)));
+                .map(s -> new RestaurantGateway.PriceSymbol(s.symbolFor(restaurantType, avgPrice)))
+                .orElseGet(() -> new RestaurantGateway.PriceSymbol(defaultStrategy.symbolFor(restaurantType, avgPrice)));
     }
 }

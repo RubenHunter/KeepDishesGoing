@@ -15,11 +15,6 @@ import java.util.List;
 /**
  * US23/US24 — automatically rejects orders that remain in PLACED state
  * longer than the configured decision window (default 5 minutes).
- *
- * Runs on a fixed-delay schedule. On each tick it finds all PLACED orders
- * whose placedAt timestamp is older than the configurable timeout, cancels
- * them with a descriptive reason, and publishes the OrderCancelled event
- * so the customer tracking read-model updates.
  */
 @Slf4j
 @Component

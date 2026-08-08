@@ -7,9 +7,10 @@ package be.kdg.backend.application.restaurant;
  */
 public interface PriceCategoryStrategy {
     /**
-     * @return price symbol in {"€","€€","€€€","€€€€"} — or empty if not applicable.
+     * @param avgPrice optional average price of published menu items, or null if menu has <2 items
+     * @return price symbol in {"€","€€","€€€","€€€€"}
      */
-    String symbolFor(String restaurantType);
+    String symbolFor(String restaurantType, Double avgPrice);
 
     /** True if this strategy handles the given restaurant type. */
     boolean supports(String restaurantType);
