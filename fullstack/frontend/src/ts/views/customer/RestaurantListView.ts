@@ -18,6 +18,16 @@ import type { View } from "../View.ts";
 
 type CardModel = Restaurant & { priceCategory: PriceCategory | null };
 
+/** Quick-filter image per cuisine (takeaway.com-style horizontal carousel). */
+const TYPE_IMAGES: Record<RestaurantType, string> = {
+	FAST_FOOD: "/img/dishes/fg-cheeseburger.jpg",
+	BROODJESZAKEN: "https://cdn.pixabay.com/photo/2017/01/09/13/21/tomato-1966418_1280.jpg",
+	COMFORT_FOOD: "/img/dishes/ph-margherita.jpg",
+	FIJN_DINEREN: "https://cdn.pixabay.com/photo/2017/06/23/00/44/pasta-2433027_1280.jpg",
+	VISRESTAURANTS: "https://cdn.pixabay.com/photo/2016/11/23/18/31/sushi-1854032_1280.jpg",
+	MICHELIN_STER: "https://cdn.pixabay.com/photo/2019/07/28/09/16/steak-4368254_1280.jpg",
+};
+
 /** US13 (open/closed), US39 (price category), browse + filter restaurants. */
 export class RestaurantListView implements View {
 	private destroyed = false;
@@ -62,6 +72,10 @@ export class RestaurantListView implements View {
 	}
 
 	private paint(root: HTMLElement): void {
+		// Re-render the filter bar so the active chip is always visible.
+		const bar = document.getElementById("filter-bar");
+		if (bar && bar.isConnected) bar.replaceWith(this.filterBar(root));
+
 		const visible = this.cards.filter(
 			(r) =>
 				(!this.openOnly || isOpen(r)) &&
@@ -132,10 +146,11 @@ export class RestaurantListView implements View {
 						this.paint(root);
 					},
 				},
-				"Open now",
+				h("span", {}, "Open now"),
 			),
 		];
 		for (const [type, label] of Object.entries(RESTAURANT_TYPE_LABELS)) {
+			const image = TYPE_IMAGES[type as RestaurantType];
 			chips.push(
 				h(
 					"button",
@@ -148,11 +163,25 @@ export class RestaurantListView implements View {
 							this.paint(root);
 						},
 					},
-					label,
+					h(
+						"img",
+						{
+							class: "filter-chip-img",
+							src: image,
+							alt: "",
+							loading: "lazy",
+							"aria-hidden": "true",
+						},
+					),
+					h("span", {}, label),
 				),
 			);
 		}
-		return h("div", { class: "filter-bar", role: "group", "aria-label": "Filters" }, ...chips);
+		return h(
+			"div",
+			{ class: "filter-bar", id: "filter-bar", role: "group", "aria-label": "Filters" },
+			...chips,
+		);
 	}
 
 	private card(r: CardModel): HTMLElement {

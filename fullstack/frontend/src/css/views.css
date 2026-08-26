@@ -358,6 +358,18 @@
 	margin-bottom: var(--space-1);
 }
 
+.delivery-card .addresses .addr-restaurant {
+	font-weight: 700;
+	color: var(--text);
+	margin-bottom: var(--space-1);
+}
+
+.page-header .addr-restaurant {
+	font-weight: 700;
+	color: var(--accent);
+	margin-top: var(--space-2);
+}
+
 @media (max-width: 640px) {
 	.delivery-card .addresses {
 		grid-template-columns: 1fr;

@@ -6,6 +6,7 @@ import {
 } from "../../api/deliveryApi.ts";
 import type { Delivery } from "../../domain/Delivery.ts";
 import { getSession } from "../../state/session.ts";
+import { restaurantNameForOrder } from "../../state/restaurantNames.ts";
 import { geocode, haversineKm } from "../../presenter/geo.ts";
 import {
 	busyButton,
@@ -114,6 +115,17 @@ export class DriverDeliveriesView implements View {
 			),
 		);
 		void this.computeDistances(available);
+		void this.computeRestaurantNames([...available, ...mine]);
+	}
+
+	private async computeRestaurantNames(deliveries: Delivery[]): Promise<void> {
+		for (const d of deliveries) {
+			if (this.destroyed) break;
+			const el = document.getElementById(`resname-${d.deliveryId}`);
+			if (!el) continue;
+			const name = await restaurantNameForOrder(d.orderId);
+			if (name && !this.destroyed) el.textContent = name;
+		}
 	}
 
 	private async computeDistances(deliveries: Delivery[]): Promise<void> {
@@ -159,6 +171,7 @@ export class DriverDeliveriesView implements View {
 				h(
 					"div",
 					{},
+					h("div", { class: "addr-restaurant", id: `resname-${d.deliveryId}` }),
 					h("div", { class: "addr-label" }, "Pickup"),
 					d.pickupAddress,
 				),
@@ -194,6 +207,7 @@ export class DriverDeliveriesView implements View {
 						h(
 							"div",
 							{},
+							h("div", { class: "addr-restaurant", id: `resname-${d.deliveryId}` }),
 							h("div", { class: "addr-label" }, "Pickup"),
 							d.pickupAddress,
 						),

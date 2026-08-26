@@ -18,6 +18,7 @@ import {
 } from "../../presenter/components.ts";
 import { h, mount } from "../../presenter/dom.ts";
 import { timeOnly } from "../../presenter/format.ts";
+import { restaurantNameForOrder } from "../../state/restaurantNames.ts";
 import type { View } from "../View.ts";
 
 const REFRESH_MS = 5000;
@@ -92,6 +93,7 @@ export class DeliveryDetailView implements View {
 						{},
 						h("h1", {}, `Delivery`),
 						h("p", { class: "subtitle mono" }, `Order ${d.orderId}`),
+						h("p", { class: "subtitle addr-restaurant", id: "resname-detail" }),
 					),
 					deliveryBadge(d.status),
 				),
@@ -127,6 +129,12 @@ export class DeliveryDetailView implements View {
 				),
 			),
 		);
+
+		void restaurantNameForOrder(d.orderId).then((name) => {
+			if (this.destroyed || !name) return;
+			const el = document.getElementById("resname-detail");
+			if (el) el.textContent = `Pickup at ${name}`;
+		});
 	}
 
 	private timelineFields(d: Delivery): HTMLElement[] {
