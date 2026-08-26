@@ -34,21 +34,21 @@ public class OrderAcceptedHandler {
     /** Best-effort: split "street number, postal city, country" → Address VO. Falls back to placeholder fields. */
     private Address parseAddress(String singleLine) {
         if (singleLine == null || singleLine.isBlank()) {
-            return new Address("unknown", "?", "?", "?", "?");
+            return new Address("Unknown pickup address", "-", "-", "-", "-");
         }
         // Splits like "Langestraat 12, 2000 Antwerpen, BE"
         try {
             String[] parts = singleLine.split(",");
             String[] streetNumber = parts[0].trim().split(" ", 2);
             String street = streetNumber[0];
-            String number = streetNumber.length > 1 ? streetNumber[1] : "?";
-            String[] pcCity = parts.length > 1 ? parts[1].trim().split(" ", 2) : new String[]{"?", "?"};
+            String number = streetNumber.length > 1 ? streetNumber[1] : "-";
+            String[] pcCity = parts.length > 1 ? parts[1].trim().split(" ", 2) : new String[]{"-", "-"};
             String pc = pcCity[0];
-            String city = pcCity.length > 1 ? pcCity[1] : "?";
-            String country = parts.length > 2 ? parts[2].trim() : "BE";
+            String city = pcCity.length > 1 ? pcCity[1] : "-";
+            String country = parts.length > 2 ? parts[2].trim() : "-";
             return new Address(street, number, pc, city, country);
         } catch (Exception e) {
-            return new Address(singleLine, "?", "?", "?", "BE");
+            return new Address(singleLine, "-", "-", "-", "-");
         }
     }
 }
