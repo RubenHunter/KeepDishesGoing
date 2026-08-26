@@ -13,7 +13,6 @@ import {
 } from "../../presenter/components.ts";
 import { h, mount } from "../../presenter/dom.ts";
 import { money, timeOnly } from "../../presenter/format.ts";
-import { clearTrackedOrder } from "../../state/trackedOrder.ts";
 import type { View } from "../View.ts";
 
 type StepDef = { status: OrderStatus; label: string; at: (t: Tracking) => string | null };
@@ -63,7 +62,6 @@ export class OrderTrackingView implements View {
 			if (isTerminal(tracking.status) && this.timer !== null) {
 				window.clearInterval(this.timer);
 				this.timer = null;
-				clearTrackedOrder();
 			}
 		} catch (error) {
 			if (this.destroyed || this.lastStatus !== null) return; // keep last good render
@@ -100,6 +98,7 @@ export class OrderTrackingView implements View {
 				{ class: "view" },
 				breadcrumb([
 					{ label: "Restaurants", href: "#/" },
+					{ label: "Track orders", href: "#/orders" },
 					{ label: this.restaurantName ?? "Restaurant" },
 					{ label: "Tracking" },
 				]),

@@ -5,13 +5,6 @@ import { busyButton, field, toast } from "../presenter/components.ts";
 import { h, mount } from "../presenter/dom.ts";
 import type { View } from "./View.ts";
 
-const ROLE_LABELS: Record<Role, string> = {
-	owner: "Restaurant owner",
-	driver: "Courier",
-	admin: "Platform admin",
-	user: "Customer",
-};
-
 /** Keycloak self-registration page (realm has registration allowed; roles assigned by admin). */
 function registrationUrl(): string {
 	const params = new URLSearchParams({
@@ -105,7 +98,7 @@ export class LoginView implements View {
 					h(
 						"div",
 						{ class: "card" },
-						h("h1", {}, `${ROLE_LABELS[this.role]} login`),
+						h("h1", {}, "Log in"),
 						h(
 							"p",
 							{ class: "role-note" },

@@ -75,6 +75,99 @@ function renderSimpleEmbed(coord: LatLon, container: HTMLElement): void {
 	else container.appendChild(wrap);
 }
 
+/**
+ * Map with one pin per restaurant (plus the user's home when known).
+ * Used by the "show all on map" button on the restaurants page.
+ */
+export async function allRestaurantsMap(
+	points: { name: string; lat: number; lon: number; href?: string }[],
+	home: LatLon | null,
+	container: HTMLElement,
+): Promise<void> {
+	if (points.length === 0) {
+		const msg = document.createElement("p");
+		msg.className = "muted";
+		msg.textContent = "No restaurants match the current filters.";
+		container.replaceChildren(msg);
+		return;
+	}
+
+	await ensureLeaflet();
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const L = (window as any).L;
+	if (!L) {
+		renderSimpleEmbed(points[0], container);
+		return;
+	}
+
+	const mapDiv = document.createElement("div");
+	mapDiv.className = "map-embed";
+	mapDiv.style.cssText = "height:100%;width:100%";
+	container.replaceChildren(mapDiv);
+
+	const map = L.map(mapDiv).setView([points[0].lat, points[0].lon], 13);
+	L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+		attribution: "&copy; OpenStreetMap",
+	}).addTo(map);
+
+	const pinIcon = L.divIcon({
+		className: "",
+		html: '<div style="width:14px;height:14px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#c2410c;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)"></div>',
+		iconSize: [18, 18],
+		iconAnchor: [9, 16],
+	});
+
+	for (const p of points) {
+		const popupContent = p.href
+			? `<strong>${escapeHtml(p.name)}</strong><br/><a href="${escapeHtml(p.href)}">View menu →</a>`
+			: `<strong>${escapeHtml(p.name)}</strong>`;
+		L.marker([p.lat, p.lon], { icon: pinIcon })
+			.addTo(map)
+			.bindPopup(popupContent);
+	}
+
+	const lats: number[] = points.map((p) => p.lat);
+	const lons: number[] = points.map((p) => p.lon);
+
+	if (home) {
+		lats.push(home.lat);
+		lons.push(home.lon);
+		L.marker([home.lat, home.lon], {
+			icon: L.divIcon({
+				className: "",
+				html: '<div style="width:14px;height:14px;border-radius:50%;background:#16a34a;border:3px solid #fff;box-shadow:0 0 0 1px #16a34a"></div>',
+				iconSize: [20, 20],
+				iconAnchor: [10, 10],
+			}),
+		}).addTo(map).bindPopup("<strong>Your home</strong>");
+	}
+
+	const minLat = Math.min(...lats);
+	const maxLat = Math.max(...lats);
+	const minLon = Math.min(...lons);
+	const maxLon = Math.max(...lons);
+	const pad = Math.max(Math.abs(maxLat - minLat), Math.abs(maxLon - minLon), 0.01) * 0.35 + 0.004;
+	map.fitBounds(
+		[
+			[minLat - pad, minLon - pad],
+			[maxLat + pad, maxLon + pad],
+		],
+		{ maxZoom: 15 },
+	);
+}
+
+function escapeHtml(text: string): string {
+	return text.replace(/[&<>"']/g, (c) => {
+		switch (c) {
+			case "&": return "&amp;";
+			case "<": return "&lt;";
+			case ">": return "&gt;";
+			case '"': return "&quot;";
+			default: return "&#39;";
+		}
+	});
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderDualMap(rest: LatLon, home: LatLon, container: HTMLElement, L: any): void {
 	const midLat = (rest.lat + home.lat) / 2;

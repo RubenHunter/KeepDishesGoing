@@ -10,6 +10,7 @@ import { CartView } from "./ts/views/customer/CartView.ts";
 import { CheckoutView } from "./ts/views/customer/CheckoutView.ts";
 import { OrderConfirmationView } from "./ts/views/customer/OrderConfirmationView.ts";
 import { OrderTrackingView } from "./ts/views/customer/OrderTrackingView.ts";
+import { OrdersListView } from "./ts/views/customer/OrdersListView.ts";
 import { RestaurantListView } from "./ts/views/customer/RestaurantListView.ts";
 import { RestaurantMenuView } from "./ts/views/customer/RestaurantMenuView.ts";
 import { AccountView } from "./ts/views/customer/AccountView.ts";
@@ -30,6 +31,7 @@ new Router(page)
 	.register({ pattern: "/cart", view: () => new CartView() })
 	.register({ pattern: "/checkout", view: () => new CheckoutView() })
 	.register({ pattern: "/orders/:id/confirmation", view: () => new OrderConfirmationView() })
+	.register({ pattern: "/orders", view: () => new OrdersListView() })
 	.register({ pattern: "/orders/:id/track", view: () => new OrderTrackingView() })
 	// Owner (role=owner)
 	.register({ pattern: "/owner/login", view: () => new LoginView("owner", "#/owner") })

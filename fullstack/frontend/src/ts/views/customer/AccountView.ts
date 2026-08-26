@@ -1,11 +1,11 @@
-import { getOrder } from "../../api/orderApi.ts";
+import { getOrder, listOrdersByCustomer } from "../../api/orderApi.ts";
 import { getRestaurantDetail } from "../../api/restaurantApi.ts";
 import { field, orderBadge, toast } from "../../presenter/components.ts";
 import { h, mount } from "../../presenter/dom.ts";
 import { money } from "../../presenter/format.ts";
 import { getSession } from "../../state/session.ts";
 import { recentOrderIds } from "../../infrastructure/recentOrders.ts";
-import { saveProfile, savedProfile, type HomeAddress } from "../../state/homeAddress.ts";
+import { saveProfile, savedProfile, loadProfile, type HomeAddress } from "../../state/homeAddress.ts";
 import { addressAutocomplete } from "../../presenter/addressAutocomplete.ts";
 import type { View } from "../View.ts";
 
@@ -23,6 +23,10 @@ export class AccountView implements View {
 
 	async render(root: HTMLElement): Promise<void> {
 		const session = getSession();
+		// Refresh the profile from the backend (keyed by account) so a fresh
+		// device shows the same settings before we render the form.
+		await loadProfile().catch(() => null);
+		if (this.destroyed) return;
 		mount(
 			root,
 			h("div", { class: "view" },
@@ -69,7 +73,7 @@ export class AccountView implements View {
 					city: cityInput.value,
 					country: countryInput.value,
 				};
-				saveProfile({ name: nameInput.value, email: emailInput.value, address: addr });
+				void saveProfile({ name: nameInput.value, email: emailInput.value, address: addr });
 				toast("Profile saved");
 			},
 		},
@@ -105,12 +109,46 @@ export class AccountView implements View {
 	}
 
 	private async loadOrderHistory(listEl: HTMLElement): Promise<void> {
+		const session = getSession();
+
+		// Logged-in users read real order history from the order-service (keyed by
+		// their Keycloak subject), so it follows the account across devices.
+		// Guests fall back to the browser-local recent-order list.
+		const source = session
+			? await listOrdersByCustomer(session.sub).catch(() => null)
+			: null;
+		if (!source) {
+			this.renderGuestHistory(listEl);
+			return;
+		}
+
+		const orders: OrderSummary[] = await Promise.all(
+			source.map(async (o) => ({
+				orderId: o.orderId,
+				restaurantName: await getRestaurantDetail(o.restaurantId)
+					.then((r) => r.name)
+					.catch(() => "Restaurant"),
+				status: o.status,
+				total: o.totalAmount,
+				currency: o.currency,
+			})),
+		);
+
+		if (this.destroyed) return;
+		if (orders.length === 0) {
+			mount(listEl, h("p", { class: "muted" }, "No orders yet. Start by browsing restaurants."));
+			return;
+		}
+		mount(listEl, this.orderTable(orders));
+	}
+
+	/** Guest fallback — orders placed from this browser (no account to query). */
+	private async renderGuestHistory(listEl: HTMLElement): Promise<void> {
 		const ids = recentOrderIds();
 		if (ids.length === 0) {
 			mount(listEl, h("p", { class: "muted" }, "No orders yet. Start by browsing restaurants."));
 			return;
 		}
-
 		const orders: OrderSummary[] = [];
 		for (const id of ids.slice(0, 15)) {
 			try {
@@ -129,32 +167,44 @@ export class AccountView implements View {
 				/* order may no longer exist */
 			}
 		}
-
 		if (this.destroyed) return;
 		if (orders.length === 0) {
 			mount(listEl, h("p", { class: "muted" }, "No recent orders found."));
 			return;
 		}
+		mount(listEl, this.orderTable(orders));
+	}
 
-		mount(listEl,
-			h("table", { class: "table" },
-				h("thead", {},
-					h("tr", {},
-						h("th", {}, "Restaurant"),
-						h("th", {}, "Status"),
-						h("th", {}, "Total"),
-						h("th", {}, ""),
-					),
+	private orderTable(orders: OrderSummary[]): HTMLElement {
+		return h(
+			"table",
+			{ class: "table" },
+			h(
+				"thead",
+				{},
+				h(
+					"tr",
+					{},
+					h("th", {}, "Restaurant"),
+					h("th", {}, "Status"),
+					h("th", {}, "Total"),
+					h("th", {}, ""),
 				),
-				h("tbody", {},
-					...orders.map((o) =>
-						h("tr", {},
-							h("td", {}, o.restaurantName),
-							h("td", {}, orderBadge(o.status as Parameters<typeof orderBadge>[0])),
-							h("td", { class: "mono" }, money(o.total)),
-							h("td", {},
-								h("a", { class: "btn btn-ghost btn-sm", href: `#/orders/${o.orderId}/track` }, "Track"),
-							),
+			),
+			h(
+				"tbody",
+				{},
+				...orders.map((o) =>
+					h(
+						"tr",
+						{},
+						h("td", {}, o.restaurantName),
+						h("td", {}, orderBadge(o.status as Parameters<typeof orderBadge>[0])),
+						h("td", { class: "mono" }, money(o.total)),
+						h(
+							"td",
+							{},
+							h("a", { class: "btn btn-ghost btn-sm", href: `#/orders/${o.orderId}/track` }, "Track"),
 						),
 					),
 				),

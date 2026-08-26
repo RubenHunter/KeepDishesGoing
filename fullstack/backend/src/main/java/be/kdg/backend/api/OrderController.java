@@ -88,9 +88,20 @@ public class OrderController {
         return ResponseEntity.ok(orders.stream().map(OrderSummary::from).toList());
     }
 
-    /** Compact summary for the owner order list (avoid exposing full PII). */
+    /**
+     * Customer console — all orders for a customer, keyed by the Keycloak subject
+     * so order history follows the account across devices.
+     */
+    @GetMapping("/customer/{customerId}")
+    public ResponseEntity<List<OrderSummary>> listByCustomer(@PathVariable UUID customerId) {
+        List<Order> orders = orderService.listOrdersForCustomer(customerId);
+        return ResponseEntity.ok(orders.stream().map(OrderSummary::from).toList());
+    }
+
+    /** Compact summary for the owner/customer order list (avoid exposing full PII). */
     public record OrderSummary(
             UUID orderId,
+            UUID restaurantId,
             String customerName,
             String status,
             double totalAmount,
@@ -103,6 +114,7 @@ public class OrderController {
         public static OrderSummary from(Order o) {
             return new OrderSummary(
                     o.id().value(),
+                    o.restaurantId().value(),
                     o.customerName(),
                     o.status().name(),
                     o.totalAmount().amount().doubleValue(),

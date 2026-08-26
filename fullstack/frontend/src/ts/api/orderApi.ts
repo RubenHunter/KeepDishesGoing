@@ -53,6 +53,7 @@ export function getTracking(orderId: string): Promise<Tracking> {
 
 export type OrderSummary = {
 	orderId: string;
+	restaurantId: string;
 	customerName: string;
 	status: string;
 	totalAmount: number;
@@ -65,4 +66,9 @@ export type OrderSummary = {
 
 export function listOrdersByRestaurant(restaurantId: string): Promise<OrderSummary[]> {
 	return request(`${base}/restaurant/${restaurantId}`);
+}
+
+/** All orders for the current account (Keycloak subject) — follows the user across devices. */
+export function listOrdersByCustomer(customerId: string): Promise<OrderSummary[]> {
+	return request(`${base}/customer/${customerId}`);
 }

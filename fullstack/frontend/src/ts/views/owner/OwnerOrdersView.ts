@@ -65,6 +65,7 @@ export class OwnerOrdersView implements View {
 				.filter((o) => !backend.some((b) => b.orderId === o.orderId))
 				.map((o) => ({
 					orderId: o.orderId,
+					restaurantId: o.restaurantId,
 					customerName: o.customerName,
 					status: o.status,
 					totalAmount: o.totalAmount,
@@ -153,6 +154,7 @@ export class OwnerOrdersView implements View {
 										h(
 											"tr",
 											{},
+											h("th", {}, "Order"),
 											h("th", {}, "Customer"),
 											h("th", { class: "num" }, "Items"),
 											h("th", { class: "num" }, "Total"),
@@ -166,6 +168,7 @@ export class OwnerOrdersView implements View {
 											h(
 												"tr",
 												{},
+												h("td", { class: "mono muted" }, o.orderId.slice(0, 8)),
 												h("td", {}, o.customerName),
 												h("td", { class: "num" }, String(o.items.length)),
 												h("td", { class: "num" }, money(o.totalAmount)),
@@ -218,6 +221,7 @@ export class OwnerOrdersView implements View {
 					h(
 						"div",
 						{ class: "cluster" },
+						h("span", { class: "mono muted", style: "font-size:var(--text-xs)" }, order.orderId.slice(0, 8)),
 						h("strong", {}, order.customerName),
 						orderBadge(order.status as OrderStatus),
 					),
@@ -271,6 +275,7 @@ export class OwnerOrdersView implements View {
 					h(
 						"div",
 						{ class: "cluster" },
+						h("span", { class: "mono muted", style: "font-size:var(--text-xs)" }, order.orderId.slice(0, 8)),
 						h("strong", {}, order.customerName),
 						orderBadge(order.status as OrderStatus),
 					),

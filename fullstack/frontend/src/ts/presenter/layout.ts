@@ -1,7 +1,9 @@
 import { getSession, hasRole, onSessionChange } from "../state/session.ts";
 import { currentCart, onCartChange } from "../state/cart.ts";
 import { resetUserState } from "../state/userState.ts";
-import { lastTrackedOrderId, onTrackedOrderChange } from "../state/trackedOrder.ts";
+import { onRecentOrdersChange, recentOrderIds } from "../infrastructure/recentOrders.ts";
+import { hasOrders, onMyOrdersChange, refreshMyOrders } from "../state/myOrders.ts";
+import { loadProfile } from "../state/homeAddress.ts";
 import { itemCount } from "../domain/Cart.ts";
 import { h, mount } from "./dom.ts";
 import { toast } from "./components.ts";
@@ -18,8 +20,15 @@ export function renderShell(): HTMLElement {
 	mount(app, nav, page);
 	const updateNav = (): void => renderNav(nav);
 	onSessionChange(updateNav);
+	onSessionChange(() => {
+		refreshMyOrders();
+		void loadProfile();
+	});
 	onCartChange(updateNav);
-	onTrackedOrderChange(updateNav);
+	onRecentOrdersChange(updateNav);
+	onMyOrdersChange(updateNav);
+	refreshMyOrders();
+	void loadProfile();
 	renderNav(nav);
 	return page;
 }
@@ -27,12 +36,12 @@ export function renderShell(): HTMLElement {
 function renderNav(nav: HTMLElement): void {
 	const session = getSession();
 	const links: HTMLElement[] = [];
-	const trackId = lastTrackedOrderId();
+	const hasTracked = hasOrders() || recentOrderIds().length > 0;
 
 	// Common links for all authenticated users (or guests)
 	if (session) {
 		links.push(navLink("#/", "Restaurants"), cartLink());
-		if (trackId) links.push(navLink(`#/orders/${trackId}/track`, "Track order"));
+		if (hasTracked) links.push(navLink("#/orders", "Track orders"));
 	}
 
 	if (hasRole("owner")) {
@@ -57,7 +66,7 @@ function renderNav(nav: HTMLElement): void {
 
 	if (!session) {
 		links.push(navLink("#/", "Restaurants"), cartLink());
-		if (trackId) links.push(navLink(`#/orders/${trackId}/track`, "Track order"));
+		if (hasTracked) links.push(navLink("#/orders", "Track orders"));
 	}
 
 	if (session) {
@@ -89,7 +98,7 @@ function renderNav(nav: HTMLElement): void {
 			h(
 				"a",
 				{ class: "brand", href: "#/" },
-				h("span", { class: "mark", "aria-hidden": "true" }, "K"),
+				h("img", { class: "mark", src: "/brand/logo.svg", alt: "" }),
 				"Keep Dishes Going",
 			),
 			h("nav", { class: "nav-links", "aria-label": "Main" }, ...links),

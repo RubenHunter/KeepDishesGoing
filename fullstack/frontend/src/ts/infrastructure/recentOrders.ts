@@ -8,6 +8,7 @@ import { load, save } from "./storage.ts";
  */
 
 const MAX_ENTRIES = 20;
+const listeners = new Set<() => void>();
 
 function key(): string {
 	return `kdg.recentOrders.${getSession()?.sub ?? "guest"}`;
@@ -17,8 +18,14 @@ export function rememberOrder(orderId: string): void {
 	const ids = load<string[]>(key()) ?? [];
 	const next = [orderId, ...ids.filter((id) => id !== orderId)].slice(0, MAX_ENTRIES);
 	save(key(), next);
+	for (const l of listeners) l();
 }
 
 export function recentOrderIds(): string[] {
 	return load<string[]>(key()) ?? [];
+}
+
+export function onRecentOrdersChange(listener: () => void): () => void {
+	listeners.add(listener);
+	return () => listeners.delete(listener);
 }

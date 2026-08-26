@@ -4,7 +4,6 @@ import { ORDER_DECISION_WINDOW_MIN } from "../../config.ts";
 import { emptyState, orderBadge, spinner } from "../../presenter/components.ts";
 import { h, mount } from "../../presenter/dom.ts";
 import { money } from "../../presenter/format.ts";
-import { trackOrder } from "../../state/trackedOrder.ts";
 import type { View } from "../View.ts";
 
 /** Post-payment confirmation (US18 locked, link to tracking US21). */
@@ -25,7 +24,6 @@ export class OrderConfirmationView implements View {
 
 		try {
 			const order = await getOrder(orderId);
-			trackOrder(order.orderId);
 			const restaurantName = await getRestaurantDetail(order.restaurantId)
 				.then((r) => r.name)
 				.catch(() => "the restaurant");

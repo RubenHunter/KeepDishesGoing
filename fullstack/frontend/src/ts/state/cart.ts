@@ -9,6 +9,7 @@ import {
 import type { ServerCart } from "../domain/Cart.ts";
 import type { Eur } from "../domain/types.ts";
 import { load, remove, save } from "../infrastructure/storage.ts";
+import { getSession } from "./session.ts";
 
 /**
  * Server-backed cart state. Browser keeps only customerId + cartId;
@@ -22,6 +23,10 @@ let cart: ServerCart | null = null;
 const listeners = new Set<() => void>();
 
 export function customerId(): string {
+	// Logged-in users are keyed by their Keycloak subject so order history
+	// follows the account; guests fall back to a browser-local id.
+	const sub = getSession()?.sub;
+	if (sub) return sub;
 	let id = load<string>(CUSTOMER_KEY);
 	if (!id) {
 		id = crypto.randomUUID();

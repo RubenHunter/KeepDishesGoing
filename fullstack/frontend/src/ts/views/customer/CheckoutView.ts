@@ -1,5 +1,6 @@
 import { checkout, confirmPayment, placeOrder } from "../../api/orderApi.ts";
 import { rememberOrder } from "../../infrastructure/recentOrders.ts";
+import { refreshMyOrders } from "../../state/myOrders.ts";
 import { currentCart, customerId, empty, ensureCart } from "../../state/cart.ts";
 import {
 	badge,
@@ -173,6 +174,7 @@ export class CheckoutView implements View {
 					if (paymentRef) await confirmPayment(paymentRef);
 					await placeOrder(orderId);
 					rememberOrder(orderId);
+					refreshMyOrders();
 					await empty();
 					location.hash = `#/orders/${orderId}/confirmation`;
 				} catch (error) {
