@@ -12,6 +12,6 @@ public interface SpringDataDeliveryJpaRepository extends JpaRepository<JpaDelive
     Optional<JpaDeliveryEntity> findByOrderId(UUID orderId);
     List<JpaDeliveryEntity> findByDeliveryPersonId(UUID driverId);
 
-    @Query("select e from JpaDeliveryEntity e where e.deliveryPersonId is null and e.status = be.kdg.backend.domain.delivery.DeliveryStatus.PENDING")
+    @Query("select e from JpaDeliveryEntity e where e.deliveryPersonId is null and (e.status = be.kdg.backend.domain.delivery.DeliveryStatus.PENDING or e.status = be.kdg.backend.domain.delivery.DeliveryStatus.READY_FOR_PICKUP)")
     List<JpaDeliveryEntity> findAvailable();
 }

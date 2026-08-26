@@ -93,8 +93,8 @@ public class Delivery {
     public void selfAssign(DeliveryPersonId personId, LocalDateTime now) {
         requireNonNull(personId, "personId");
         requireNonNull(now, "now");
-        if (status != DeliveryStatus.PENDING) {
-            throw new IllegalStateException("Cannot self-assign — delivery is not PENDING (status=" + status + ")");
+        if (status != DeliveryStatus.PENDING && status != DeliveryStatus.READY_FOR_PICKUP) {
+            throw new IllegalStateException("Cannot self-assign — delivery is " + status);
         }
         if (deliveryPersonId != null) {
             throw new be.kdg.backend.domain.delivery.DeliveryAlreadyAssignedException(id);
@@ -103,9 +103,13 @@ public class Delivery {
             throw new IllegalStateException("Delivery " + id + " is not available for assignment");
         }
         this.deliveryPersonId = personId;
-        this.status = DeliveryStatus.ASSIGNED;
         this.availableForSelfAssignment = false;
         this.assignedAt = now;
+        // Claiming an already-ready delivery keeps it READY_FOR_PICKUP so the courier
+        // can pick it up right away (US28/US30).
+        this.status = status == DeliveryStatus.READY_FOR_PICKUP
+                ? DeliveryStatus.READY_FOR_PICKUP
+                : DeliveryStatus.ASSIGNED;
     }
 
     /** Called on consuming {@code order.ready_for_pickup} event. */
