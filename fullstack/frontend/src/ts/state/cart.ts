@@ -116,6 +116,14 @@ export async function refresh(): Promise<void> {
 	notify();
 }
 
+/** Drops the browser-local cart identity on logout so carts never leak across accounts. */
+export function forgetLocalCart(): void {
+	remove(CUSTOMER_KEY);
+	remove(CART_KEY);
+	cart = null;
+	notify();
+}
+
 export function onCartChange(listener: () => void): () => void {
 	listeners.add(listener);
 	return () => listeners.delete(listener);

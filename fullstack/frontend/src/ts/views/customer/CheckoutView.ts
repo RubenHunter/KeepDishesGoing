@@ -13,6 +13,7 @@ import { h, mount } from "../../presenter/dom.ts";
 import { money } from "../../presenter/format.ts";
 import { addressAutocomplete } from "../../presenter/addressAutocomplete.ts";
 import { savedHomeAddress, savedProfile } from "../../state/homeAddress.ts";
+import { getSession } from "../../state/session.ts";
 import type { View } from "../View.ts";
 
 /**
@@ -46,7 +47,10 @@ export class CheckoutView implements View {
 		const profile = savedProfile();
 		const home = savedHomeAddress();
 
-		const nameInput = h("input", { class: "input", required: true, autocomplete: "name", value: profile?.name ?? "" });
+		// Prefill from the logged-in account, never from another user's saved profile.
+		const defaultName = profile?.name ?? getSession()?.username ?? "";
+
+		const nameInput = h("input", { class: "input", required: true, autocomplete: "name", value: defaultName });
 		const emailInput = h("input", { class: "input", type: "email", required: true, autocomplete: "email", value: profile?.email ?? "" });
 		const streetInput = h("input", { class: "input", required: true, autocomplete: "address-line1", value: home?.street ?? "" });
 		const numberInput = h("input", { class: "input", required: true, autocomplete: "address-line2", value: home?.number ?? "" });

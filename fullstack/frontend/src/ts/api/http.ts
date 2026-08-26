@@ -1,4 +1,5 @@
-import { clearSession, getSession } from "../state/session.ts";
+import { getSession } from "../state/session.ts";
+import { resetUserState } from "../state/userState.ts";
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -52,7 +53,7 @@ async function send(url: string, options: Options): Promise<Response> {
 
 	if (response.status === 401) {
 		// Token expired/invalid - session is gone, force re-login.
-		if (auth) clearSession();
+		if (auth) resetUserState();
 		throw new ApiError(response.status, "Session expired. Please log in again.");
 	}
 

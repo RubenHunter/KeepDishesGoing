@@ -1,6 +1,7 @@
-import { clearSession, getSession, hasRole, onSessionChange } from "../state/session.ts";
+import { getSession, hasRole, onSessionChange } from "../state/session.ts";
 import { currentCart, onCartChange } from "../state/cart.ts";
-import { lastTrackedOrderId } from "../state/trackedOrder.ts";
+import { resetUserState } from "../state/userState.ts";
+import { lastTrackedOrderId, onTrackedOrderChange } from "../state/trackedOrder.ts";
 import { itemCount } from "../domain/Cart.ts";
 import { h, mount } from "./dom.ts";
 import { toast } from "./components.ts";
@@ -18,6 +19,7 @@ export function renderShell(): HTMLElement {
 	const updateNav = (): void => renderNav(nav);
 	onSessionChange(updateNav);
 	onCartChange(updateNav);
+	onTrackedOrderChange(updateNav);
 	renderNav(nav);
 	return page;
 }
@@ -65,7 +67,9 @@ function renderNav(nav: HTMLElement): void {
 				{
 					class: "btn btn-ghost btn-sm",
 					onclick: () => {
-						clearSession();
+						// Drop session + cart identity. Per-account data (profile,
+						// order history, tracked order) stays keyed by Keycloak sub.
+						resetUserState();
 						toast("Logged out");
 						location.hash = "#/";
 					},

@@ -1,6 +1,10 @@
 import { load, save } from "../infrastructure/storage.ts";
+import { getSession } from "./session.ts";
 
-const KEY = "kdg.home-address";
+/** Profile is scoped per Keycloak subject (guests share the "guest" scope). */
+function key(): string {
+	return `kdg.home-address.${getSession()?.sub ?? "guest"}`;
+}
 
 export interface HomeAddress {
 	street: string;
@@ -17,11 +21,11 @@ export interface CustomerProfile {
 }
 
 export function savedProfile(): CustomerProfile | null {
-	return load<CustomerProfile>(KEY);
+	return load<CustomerProfile>(key());
 }
 
 export function saveProfile(profile: CustomerProfile): void {
-	save(KEY, profile);
+	save(key(), profile);
 }
 
 export function savedHomeAddress(): HomeAddress | null {

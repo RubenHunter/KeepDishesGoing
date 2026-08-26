@@ -59,6 +59,8 @@ export type OrderSummary = {
 	currency: string;
 	placedAt: string | null;
 	itemCount: number;
+	deliveryAddress: string | null;
+	items: { menuItemId: string; itemName: string; quantity: number; unitPrice: number }[];
 };
 
 export function listOrdersByRestaurant(restaurantId: string): Promise<OrderSummary[]> {

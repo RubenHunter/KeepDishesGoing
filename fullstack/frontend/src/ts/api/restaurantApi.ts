@@ -163,9 +163,10 @@ export function schedulePublish(restaurantId: string, publishAt: string): Promis
 
 // ----- Order decisions (publish AMQP events; public on restaurant-service) -----
 
-/** US22 - accept (delivery becomes claimable, US28). */
+/** US22 - accept (delivery becomes claimable, US28). Pickup address resolved server-side from the restaurant record. */
 export function acceptOrder(restaurantId: string, orderId: string, pickupAddress?: string, deliveryAddress?: string): Promise<void> {
-	const body: Record<string, string> = { pickupAddress: pickupAddress ?? "Pickup at restaurant" };
+	const body: Record<string, string> = {};
+	if (pickupAddress) body.pickupAddress = pickupAddress;
 	if (deliveryAddress) body.deliveryAddress = deliveryAddress;
 	return request(`${restaurant}/restaurants/${restaurantId}/orders/${orderId}/accept`, {
 		method: "POST",

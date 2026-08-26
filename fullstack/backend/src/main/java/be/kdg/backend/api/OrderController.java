@@ -96,7 +96,9 @@ public class OrderController {
             double totalAmount,
             String currency,
             java.time.LocalDateTime placedAt,
-            int itemCount
+            int itemCount,
+            String deliveryAddress,
+            java.util.List<OrderDetail.ItemDetail> items
     ) {
         public static OrderSummary from(Order o) {
             return new OrderSummary(
@@ -106,7 +108,13 @@ public class OrderController {
                     o.totalAmount().amount().doubleValue(),
                     o.totalAmount().currency(),
                     o.placedAt(),
-                    o.items().size()
+                    o.items().size(),
+                    o.deliveryAddress() == null ? null : o.deliveryAddress().singleLine(),
+                    o.items().stream().map(it -> new OrderDetail.ItemDetail(
+                            it.getMenuItemId().value().toString(),
+                            it.getItemName(),
+                            it.getQuantity().value(),
+                            it.getUnitPrice().amount().doubleValue())).toList()
             );
         }
     }

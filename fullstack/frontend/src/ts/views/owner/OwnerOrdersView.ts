@@ -1,11 +1,10 @@
-import { getOrder } from "../../api/orderApi.ts";
+import { getOrder, listOrdersByRestaurant, type OrderSummary } from "../../api/orderApi.ts";
+import type { OrderStatus } from "../../domain/Order.ts";
 import {
 	acceptOrder,
 	markOrderReady,
 	rejectOrder,
 } from "../../api/restaurantApi.ts";
-import type { OrderDetail } from "../../domain/Order.ts";
-import { recentOrderIds, rememberOrder } from "../../infrastructure/recentOrders.ts";
 import { resolveOwnerRestaurantId } from "../../state/ownerRestaurant.ts";
 import {
 	breadcrumb,
@@ -24,14 +23,15 @@ const REFRESH_MS = 5000;
 
 /**
  * US22 (fast decision), US25 (rejection reason), US26 (mark ready).
- * No list endpoint exists backend-side, so the console watches orders placed
- * from this browser plus any order id entered manually (demo flow).
+ * Orders come from the order-service restaurant list endpoint. An order id
+ * can also be watched manually (useful for cross-browser demo flows).
  */
 export class OwnerOrdersView implements View {
 	private destroyed = false;
 	private timer: number | null = null;
 	private restaurantId: string | null = null;
 	private lastSnapshot = "";
+	private readonly watched = new Set<string>();
 
 	async render(root: HTMLElement): Promise<void> {
 		this.restaurantId = await resolveOwnerRestaurantId();
@@ -55,10 +55,26 @@ export class OwnerOrdersView implements View {
 	}
 
 	private async reload(root: HTMLElement, silent = false): Promise<void> {
-		const ids = recentOrderIds();
-		const orders = (
-			await Promise.all(ids.map((id) => getOrder(id).catch(() => null)))
-		).filter((o): o is OrderDetail => o !== null);
+		const backend = await listOrdersByRestaurant(this.restaurantId!).catch(() => []);
+		const watched = (
+			await Promise.all([...this.watched].map((id) => getOrder(id).catch(() => null)))
+		).filter((o) => o !== null);
+		const orders: OrderSummary[] = [
+			...backend,
+			...watched
+				.filter((o) => !backend.some((b) => b.orderId === o.orderId))
+				.map((o) => ({
+					orderId: o.orderId,
+					customerName: o.customerName,
+					status: o.status,
+					totalAmount: o.totalAmount,
+					currency: o.currency,
+					placedAt: null,
+					itemCount: o.items.length,
+					deliveryAddress: o.deliveryAddress,
+					items: o.items,
+				})),
+		];
 		if (this.destroyed) return;
 		const snapshot = JSON.stringify(orders);
 		if (snapshot !== this.lastSnapshot) {
@@ -67,13 +83,10 @@ export class OwnerOrdersView implements View {
 		}
 	}
 
-	private paint(root: HTMLElement, orders: OrderDetail[], silent: boolean): void {
-		const mine = orders.filter(
-			(o) => !this.restaurantId || o.restaurantId === this.restaurantId,
-		);
-		const awaiting = mine.filter((o) => o.status === "PLACED" || o.status === "PENDING");
-		const inPrep = mine.filter((o) => o.status === "ACCEPTED");
-		const later = mine.filter((o) =>
+	private paint(root: HTMLElement, orders: OrderSummary[], silent: boolean): void {
+		const awaiting = orders.filter((o) => o.status === "PLACED" || o.status === "PENDING");
+		const inPrep = orders.filter((o) => o.status === "ACCEPTED");
+		const later = orders.filter((o) =>
 			["READY_FOR_PICKUP", "PICKED_UP", "DELIVERED", "REJECTED", "CANCELLED"].includes(o.status),
 		);
 
@@ -104,7 +117,7 @@ export class OwnerOrdersView implements View {
 				orders.length === 0 && !silent
 					? emptyState(
 							"No orders yet",
-							"Orders placed from this browser appear here. You can also look up an order by id.",
+							"Incoming orders for your restaurant appear here. You can also look up an order by id.",
 						)
 					: null,
 				awaiting.length > 0
@@ -156,7 +169,7 @@ export class OwnerOrdersView implements View {
 												h("td", {}, o.customerName),
 												h("td", { class: "num" }, String(o.items.length)),
 												h("td", { class: "num" }, money(o.totalAmount)),
-												h("td", {}, orderBadge(o.status)),
+												h("td", {}, orderBadge(o.status as OrderStatus)),
 											),
 										),
 									),
@@ -182,7 +195,7 @@ export class OwnerOrdersView implements View {
 					e.preventDefault();
 					const id = input.value.trim();
 					if (!id) return;
-					rememberOrder(id);
+					this.watched.add(id);
 					input.value = "";
 					void this.reload(root, true);
 				},
@@ -192,7 +205,7 @@ export class OwnerOrdersView implements View {
 		);
 	}
 
-	private decisionCard(root: HTMLElement, order: OrderDetail): HTMLElement {
+	private decisionCard(root: HTMLElement, order: OrderSummary): HTMLElement {
 		return h(
 			"div",
 			{ class: "card" },
@@ -206,7 +219,7 @@ export class OwnerOrdersView implements View {
 						"div",
 						{ class: "cluster" },
 						h("strong", {}, order.customerName),
-						orderBadge(order.status),
+						orderBadge(order.status as OrderStatus),
 					),
 					h(
 						"ul",
@@ -245,7 +258,7 @@ export class OwnerOrdersView implements View {
 		);
 	}
 
-	private prepCard(root: HTMLElement, order: OrderDetail): HTMLElement {
+	private prepCard(root: HTMLElement, order: OrderSummary): HTMLElement {
 		return h(
 			"div",
 			{ class: "card" },
@@ -259,7 +272,7 @@ export class OwnerOrdersView implements View {
 						"div",
 						{ class: "cluster" },
 						h("strong", {}, order.customerName),
-						orderBadge(order.status),
+						orderBadge(order.status as OrderStatus),
 					),
 					h(
 						"ul",
@@ -285,7 +298,7 @@ export class OwnerOrdersView implements View {
 		);
 	}
 
-	private rejectDialog(root: HTMLElement, order: OrderDetail): void {
+	private rejectDialog(root: HTMLElement, order: OrderSummary): void {
 		const reason = h("textarea", {
 			class: "textarea",
 			required: true,
