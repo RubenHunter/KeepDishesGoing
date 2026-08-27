@@ -25,6 +25,7 @@ public class DeliveryPerson {
     @Identity
     private final DeliveryPersonId id;
     private final String name;
+    private final String email;
     private final String vehicleType;
 
     private boolean available;
@@ -33,20 +34,26 @@ public class DeliveryPerson {
     private LocalDateTime updatedAt;
 
     public DeliveryPerson(DeliveryPersonId id, String name, String vehicleType, boolean available) {
+        this(id, name, "", vehicleType, available);
+    }
+
+    public DeliveryPerson(DeliveryPersonId id, String name, String email, String vehicleType, boolean available) {
         requireNonNull(id, "id");
         requireNonBlank(name, "name");
         requireNonBlank(vehicleType, "vehicleType");
         this.id = id;
         this.name = name;
+        this.email = email == null ? "" : email.trim();
         this.vehicleType = vehicleType;
         this.available = available;
         this.updatedAt = LocalDateTime.now();
     }
 
-    private DeliveryPerson(DeliveryPersonId id, String name, String vehicleType, boolean available,
-                          DeliveryId assignedDeliveryId, LocalDateTime assignmentTime, LocalDateTime updatedAt) {
+    private DeliveryPerson(DeliveryPersonId id, String name, String email, String vehicleType, boolean available,
+                           DeliveryId assignedDeliveryId, LocalDateTime assignmentTime, LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
+        this.email = email == null ? "" : email.trim();
         this.vehicleType = vehicleType;
         this.available = available;
         this.assignedDeliveryId = assignedDeliveryId;
@@ -58,7 +65,13 @@ public class DeliveryPerson {
     public static DeliveryPerson rehydrate(DeliveryPersonId id, String name, String vehicleType, boolean available,
                                             DeliveryId assignedDeliveryId, LocalDateTime assignmentTime,
                                             LocalDateTime updatedAt) {
-        return new DeliveryPerson(id, name, vehicleType, available, assignedDeliveryId, assignmentTime, updatedAt);
+        return rehydrate(id, name, "", vehicleType, available, assignedDeliveryId, assignmentTime, updatedAt);
+    }
+
+    public static DeliveryPerson rehydrate(DeliveryPersonId id, String name, String email, String vehicleType,
+                                            boolean available, DeliveryId assignedDeliveryId,
+                                            LocalDateTime assignmentTime, LocalDateTime updatedAt) {
+        return new DeliveryPerson(id, name, email, vehicleType, available, assignedDeliveryId, assignmentTime, updatedAt);
     }
 
     /** US27 halves the assignment: DeliveryPerson records the delivery id (US31 ensures single). */
@@ -96,6 +109,7 @@ public class DeliveryPerson {
 
     public DeliveryPersonId id()              { return id; }
     public String name()                       { return name; }
+    public String email()                      { return email; }
     public String vehicleType()                { return vehicleType; }
     public boolean available()                 { return available; }
     public DeliveryId assignedDeliveryId()    { return assignedDeliveryId; }

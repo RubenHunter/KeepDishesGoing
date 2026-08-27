@@ -2,6 +2,8 @@ package be.kdg.backend.infrastructure.report;
 
 import be.kdg.backend.application.PayoutService;
 import be.kdg.backend.application.report.PayoutReportPort;
+import be.kdg.backend.domain.driver.DeliveryPerson;
+import be.kdg.backend.domain.driver.DeliveryPersonRepository;
 import be.kdg.backend.domain.payout.Payout;
 import be.kdg.backend.domain.shared.DeliveryPersonId;
 import be.kdg.backend.domain.shared.Money;
@@ -14,7 +16,6 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 
 import java.io.ByteArrayOutputStream;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -23,14 +24,19 @@ import java.util.stream.Collectors;
 /**
  * US38 — generates the payouts PDF report using OpenHTMLtoPDF + Thymeleaf.
  *
- * Layout: per-driver grouped summary + total + detailed list of payouts in the chosen date range.
+ * Layout: per-driver grouped summary (name + email) + total + detailed list of payouts in the
+ * chosen date range. Timestamps are formatted to a human-readable {@code yyyy-MM-dd HH:mm}.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class PdfPayoutReportGenerator implements PayoutReportPort {
 
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
     private final PayoutService payoutService;
+    private final DeliveryPersonRepository driverRepository;
+
     @Override
     public byte[] render(LocalDateTime from, LocalDateTime to) {
         log.info("Rendering payout report from {} to {}", from, to);
@@ -42,22 +48,28 @@ public class PdfPayoutReportGenerator implements PayoutReportPort {
 
         List<DriverSummary> driverSummaries = byDriver.entrySet().stream()
                 .map(e -> {
+                    UUID driverId = e.getKey();
                     List<Payout> list = e.getValue();
                     Money driverTotal = list.stream().map(Payout::total).reduce(Money.ofEuros(0), Money::add);
-                    return new DriverSummary(e.getKey(), list.size(), driverTotal, list);
+                    DeliveryPerson person = driverRepository.findById(DeliveryPersonId.of(driverId)).orElse(null);
+                    String name = person == null ? "Unknown" : person.name();
+                    String email = person == null ? "" : person.email();
+                    List<RowView> rowViews = list.stream()
+                            .sorted(Comparator.comparing(Payout::deliveredAt))
+                            .map(RowView::from)
+                            .toList();
+                    return new DriverSummary(driverId, name, email, list.size(), driverTotal, rowViews);
                 })
-                .sorted(Comparator.comparing(DriverSummary::driverId))
+                .sorted(Comparator.comparing(DriverSummary::name))
                 .toList();
 
         Money grandTotal = driverSummaries.stream()
                 .map(d -> d.total)
                 .reduce(Money.ofEuros(0), Money::add);
 
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
         Context ctx = new Context();
-        ctx.setVariable("from", from.format(fmt));
-        ctx.setVariable("to", to.format(fmt));
+        ctx.setVariable("from", from.format(TIME));
+        ctx.setVariable("to", to.format(TIME));
         ctx.setVariable("drivers", driverSummaries);
         ctx.setVariable("grandTotal", formatMoney(grandTotal));
 
@@ -78,7 +90,7 @@ public class PdfPayoutReportGenerator implements PayoutReportPort {
         }
     }
 
-    private String formatMoney(Money m) {
+    private static String formatMoney(Money m) {
         return "€ " + m.amount().setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
     }
 
@@ -92,5 +104,21 @@ public class PdfPayoutReportGenerator implements PayoutReportPort {
         return engine;
     }
 
-    public record DriverSummary(UUID driverId, int numDeliveries, Money total, List<Payout> rows) {}
+    /** Pre-formatted payout row for the report template. */
+    public record RowView(String payoutId, String deliveryId, String readyAt, String deliveredAt,
+                          int billableMinutes, String total) {
+        public static RowView from(Payout p) {
+            return new RowView(
+                    p.id().value().toString(),
+                    p.deliveryId().value().toString(),
+                    p.readyAt().format(TIME),
+                    p.deliveredAt().format(TIME),
+                    p.billableMinutes(),
+                    formatMoney(p.total())
+            );
+        }
+    }
+
+    public record DriverSummary(UUID driverId, String name, String email, int numDeliveries,
+                                Money total, List<RowView> rows) {}
 }

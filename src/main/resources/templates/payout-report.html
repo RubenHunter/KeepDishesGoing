@@ -12,6 +12,7 @@
         th { background-color: #eee; }
         .total { font-weight: bold; background: #f5f5f5; }
         .meta { color: #666; font-size: 10pt; }
+        .mono { font-family: monospace; font-size: 9pt; }
     </style>
 </head>
 <body>
@@ -20,21 +21,22 @@
 
     <h2>Per Courier Summary</h2>
     <table>
-        <tr><th>Courier ID</th><th># Deliveries</th><th>Total Payout</th></tr>
+        <tr><th>Courier</th><th>Email</th><th># Deliveries</th><th>Total Payout</th></tr>
         <tr th:each="d : ${drivers}">
-            <td th:text="${d.driverId}"/>
+            <td th:text="${d.name}"/>
+            <td th:text="${d.email}"/>
             <td th:text="${d.numDeliveries}"/>
             <td th:text="${#numbers.formatDecimal(d.total.amount, 2, 2)} + ' ' + ${d.total.currency}"/>
         </tr>
         <tr class="total">
-            <td colspan="2">GRAND TOTAL</td>
+            <td colspan="3">GRAND TOTAL</td>
             <td th:text="${grandTotal}"/>
         </tr>
     </table>
 
     <h2>Detailed Payouts</h2>
     <div th:each="d : ${drivers}">
-        <h3 th:text="'Courier: ' + ${d.driverId}"/>
+        <h3 th:text="'Courier: ' + ${d.name} + ' — ' + ${d.email}"/>
         <table>
             <tr>
                 <th>Payout ID</th>
@@ -45,12 +47,12 @@
                 <th>Total</th>
             </tr>
             <tr th:each="p : ${d.rows}">
-                <td th:text="${p.id().value()}"/>
-                <td th:text="${p.deliveryId().value()}"/>
-                <td th:text="${p.readyAt()}"/>
-                <td th:text="${p.deliveredAt()}"/>
-                <td th:text="${p.billableMinutes()}"/>
-                <td th:text="${#numbers.formatDecimal(p.total().amount, 2, 2)} + ' ' + ${p.total().currency}"/>
+                <td class="mono" th:text="${p.payoutId}"/>
+                <td class="mono" th:text="${p.deliveryId}"/>
+                <td th:text="${p.readyAt}"/>
+                <td th:text="${p.deliveredAt}"/>
+                <td th:text="${p.billableMinutes}"/>
+                <td th:text="${p.total}"/>
             </tr>
         </table>
     </div>

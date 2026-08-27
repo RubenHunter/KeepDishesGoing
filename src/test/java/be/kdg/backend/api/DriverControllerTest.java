@@ -48,6 +48,7 @@ class DriverControllerTest {
         Jwt token = Jwt.withTokenValue("token")
                 .header("alg", "none")
                 .subject(sub)
+                .claim("email", "driver@kdg.dev")
                 .build();
         return new JwtAuthenticationToken(token);
     }
@@ -61,6 +62,7 @@ class DriverControllerTest {
         verify(driverService).registerDriverIfAbsent(
                 org.mockito.ArgumentMatchers.eq(DeliveryPersonId.of(subject)),
                 org.mockito.ArgumentMatchers.eq("Ruben"),
+                org.mockito.ArgumentMatchers.eq("driver@kdg.dev"),
                 org.mockito.ArgumentMatchers.eq("BICYCLE"));
         assertThat(resp.getBody().driverId()).isEqualTo(subject);
     }

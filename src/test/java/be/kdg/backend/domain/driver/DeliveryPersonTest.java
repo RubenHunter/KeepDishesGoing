@@ -71,4 +71,10 @@ class DeliveryPersonTest {
         assertThrows(IllegalStateException.class, () ->
                 DeliveryPerson.rehydrate(id, "X", "BIKE", true, null, LocalDateTime.now(), null));
     }
+
+    @Test
+    void emailIsStoredAndTrimmed() {
+        DeliveryPerson dp = new DeliveryPerson(DeliveryPersonId.generate(), "Ruben", "  ruben@kdg.dev  ", "BIKE", true);
+        assertEquals("ruben@kdg.dev", dp.email());
+    }
 }

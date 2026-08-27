@@ -33,7 +33,8 @@ public class DriverController {
     @PostMapping
     public ResponseEntity<DriverResponse> register(@RequestBody RegisterDriverRequest req, JwtAuthenticationToken jwt) {
         var id = DeliveryPersonId.of(UUID.fromString(jwt.getToken().getSubject()));
-        driverService.registerDriverIfAbsent(id, req.name(), req.vehicle());
+        String email = jwt.getToken().getClaimAsString("email");
+        driverService.registerDriverIfAbsent(id, req.name(), email, req.vehicle());
         return ResponseEntity.ok(new DriverResponse(id.value(), req.name(), req.vehicle(), true));
     }
 

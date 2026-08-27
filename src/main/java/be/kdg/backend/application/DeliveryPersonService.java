@@ -24,7 +24,12 @@ public class DeliveryPersonService {
 
     @Transactional
     public DeliveryPersonId registerDriver(String name, String vehicle) {
-        DeliveryPerson dp = new DeliveryPerson(DeliveryPersonId.generate(), name, vehicle, true);
+        return registerDriver(name, "", vehicle);
+    }
+
+    @Transactional
+    public DeliveryPersonId registerDriver(String name, String email, String vehicle) {
+        DeliveryPerson dp = new DeliveryPerson(DeliveryPersonId.generate(), name, email, vehicle, true);
         driverRepository.save(dp);
         log.info("Registered driver {} ({})", dp.id(), name);
         return dp.id();
@@ -33,11 +38,17 @@ public class DeliveryPersonService {
     /** Idempotent self-registration — driver id = Keycloak subject. */
     @Transactional
     public void registerDriverIfAbsent(DeliveryPersonId id, String name, String vehicle) {
+        registerDriverIfAbsent(id, name, "", vehicle);
+    }
+
+    /** Idempotent self-registration — driver id = Keycloak subject. */
+    @Transactional
+    public void registerDriverIfAbsent(DeliveryPersonId id, String name, String email, String vehicle) {
         if (driverRepository.findById(id).isPresent()) {
             log.debug("Driver {} already registered", id.value());
             return;
         }
-        DeliveryPerson dp = new DeliveryPerson(id, name, vehicle, true);
+        DeliveryPerson dp = new DeliveryPerson(id, name, email, vehicle, true);
         driverRepository.save(dp);
         log.info("Registered driver {} ({})", dp.id(), name);
     }

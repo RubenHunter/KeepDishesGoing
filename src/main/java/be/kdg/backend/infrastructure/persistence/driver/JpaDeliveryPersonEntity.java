@@ -14,6 +14,7 @@ public class JpaDeliveryPersonEntity {
     @Id
     private UUID id;
     private String name;
+    private String email;
     private String vehicleType;
     private boolean available;
     private UUID assignedDeliveryId;
@@ -26,6 +27,7 @@ public class JpaDeliveryPersonEntity {
         JpaDeliveryPersonEntity e = new JpaDeliveryPersonEntity();
         e.id = p.id().value();
         e.name = p.name();
+        e.email = p.email();
         e.vehicleType = p.vehicleType();
         e.available = p.available();
         e.assignedDeliveryId = p.assignedDeliveryId() == null ? null : p.assignedDeliveryId().value();
@@ -38,6 +40,7 @@ public class JpaDeliveryPersonEntity {
         return DeliveryPerson.rehydrate(
                 DeliveryPersonId.of(id),
                 name,
+                email,
                 vehicleType,
                 available,
                 assignedDeliveryId == null ? null : be.kdg.backend.domain.shared.DeliveryId.of(assignedDeliveryId),
