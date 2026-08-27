@@ -20,43 +20,52 @@ export function listAvailableDeliveries(): Promise<Delivery[]> {
 	return request(`${base}/deliveries/available`, { auth: true });
 }
 
-export function listMyDeliveries(driverId: string): Promise<Delivery[]> {
-	return request(`${base}/deliveries?driverId=${encodeURIComponent(driverId)}`, { auth: true });
+/** Backend derives the driver from the JWT subject — no query param needed. */
+export function listMyDeliveries(_driverId?: string): Promise<Delivery[]> {
+	return request(`${base}/deliveries`, { auth: true });
 }
 
 export function getDelivery(deliveryId: string): Promise<Delivery> {
 	return request(`${base}/deliveries/${deliveryId}`, { auth: true });
 }
 
-/** US27 - self-assign. One active delivery per courier (US31). */
-export function claimDelivery(deliveryId: string, driverId: string): Promise<void> {
-	return request(`${base}/deliveries/${deliveryId}/claim`, {
-		method: "POST",
-		body: { driverId },
+/**
+ * US27-US30 lifecycle — one resource endpoint (PATCH /deliveries/{id}/status).
+ * The backend always derives the driver id from the JWT subject.
+ */
+export function setDeliveryStatus(
+	deliveryId: string,
+	status: "ASSIGNED" | "CANCELLED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERED",
+	reason?: string,
+): Promise<void> {
+	return request(`${base}/deliveries/${deliveryId}/status`, {
+		method: "PATCH",
+		body: { status, reason },
 		auth: true,
 	});
+}
+
+/** US27 - self-assign. One active delivery per courier (US31). */
+export function claimDelivery(deliveryId: string): Promise<void> {
+	return setDeliveryStatus(deliveryId, "ASSIGNED");
 }
 
 /** US29 - release claim, only while order not yet ready for pickup. */
 export function cancelClaim(deliveryId: string, reason: string): Promise<void> {
-	return request(`${base}/deliveries/${deliveryId}/cancel-claim`, {
-		method: "POST",
-		body: { reason },
-		auth: true,
-	});
+	return setDeliveryStatus(deliveryId, "CANCELLED", reason);
 }
 
 export function markPickedUp(deliveryId: string): Promise<void> {
-	return request(`${base}/deliveries/${deliveryId}/pickup`, { method: "POST", auth: true });
+	return setDeliveryStatus(deliveryId, "PICKED_UP");
 }
 
 export function markInTransit(deliveryId: string): Promise<void> {
-	return request(`${base}/deliveries/${deliveryId}/transit`, { method: "POST", auth: true });
+	return setDeliveryStatus(deliveryId, "IN_TRANSIT");
 }
 
 /** US30/US34 - final step; payout computed and credited. */
 export function markDelivered(deliveryId: string): Promise<void> {
-	return request(`${base}/deliveries/${deliveryId}/deliver`, { method: "POST", auth: true });
+	return setDeliveryStatus(deliveryId, "DELIVERED");
 }
 
 /** US35 - completed deliveries + payouts + grand total. */

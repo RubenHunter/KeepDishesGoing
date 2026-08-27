@@ -33,7 +33,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -102,6 +104,14 @@ class OrderFlowIntegrationTest {
                 .andReturn();
     }
 
+    private MvcResult placeOrderPatch(UUID orderId) throws Exception {
+        return mockMvc.perform(patch("/api/orders/" + orderId + "/status").with(userJwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("status", "PLACED"))))
+                .andExpect(status().is2xxSuccessful())
+                .andReturn();
+    }
+
     @Test
     void createCartAddItemsAndCheckout() throws Exception {
         // 1. Create cart (owner = JWT subject)
@@ -128,18 +138,18 @@ class OrderFlowIntegrationTest {
                 "city", "Antwerpen",
                 "country", "BE",
                 "email", "ruben@example.com");
-        JsonNode checkoutResp = postJson("/api/orders/checkout", checkoutBody);
+        JsonNode checkoutResp = postJson("/api/orders", checkoutBody);
         UUID orderId = UUID.fromString(checkoutResp.get("orderId").asText());
         String paymentRef = checkoutResp.get("paymentRef").asText();
         org.assertj.core.api.Assertions.assertThat(paymentRef).startsWith("pay_");
 
         // 4. Confirm payment (webhook — permitAll but requires the shared-secret header)
-        mockMvc.perform(post("/api/payments/" + paymentRef + "/confirm")
+        mockMvc.perform(patch("/api/payments/" + paymentRef + "/status")
                         .header(paymentProperties.webhookSecretHeader(), paymentProperties.webhookSecret()))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         // 5. Place order — should succeed (PAID) and emit event
-        postNoBody("/api/orders/" + orderId + "/place");
+        placeOrderPatch(orderId);
         verify(eventPublisher).publishOrderPlaced(any());
 
         // 6. Order in DB is PLACED
@@ -168,18 +178,33 @@ class OrderFlowIntegrationTest {
                 "customerName", "Ruben",
                 "street", "S", "number", "1", "postalCode", "2000",
                 "city", "A", "country", "BE", "email", "r@example.com");
-        mockMvc.perform(post("/api/orders/checkout").with(userJwt())
+        mockMvc.perform(post("/api/orders").with(userJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(checkoutBody)))
                 .andExpect(status().is4xxClientError());
     }
 
+    /**
+     * Guests may READ catalogue + order progress (US21/US33) without any token;
+     * everything tied to a JWT identity (carts, checkout, profile, owner console) stays guarded.
+     */
     @Test
-    void unauthenticatedRequestsAreRejected() throws Exception {
+    void guestReadsAreOpenButIdentityWritesAreNot() throws Exception {
+        // Read-only order views: public for guests — unknown ids give 404, never 401
+        mockMvc.perform(get("/api/orders/" + UUID.randomUUID() + "/tracking"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/orders/" + UUID.randomUUID()))
+                .andExpect(status().isNotFound());
+
+        // Identity-bound writes still require a token
+        mockMvc.perform(post("/api/carts"))
+                .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/orders/customer"))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(post("/api/carts"))
+        // Owner console still locked for anonymous callers
+        mockMvc.perform(get("/api/orders/restaurant/" + UUID.randomUUID()))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -191,7 +216,7 @@ class OrderFlowIntegrationTest {
                 "menuItemId", UUID.randomUUID().toString(),
                 "itemName", "Pizza", "quantity", 1, "unitPrice", 10.0,
                 "restaurantId", knownRestaurantId.toString()));
-        JsonNode checkoutResp = postJson("/api/orders/checkout", Map.of(
+        JsonNode checkoutResp = postJson("/api/orders", Map.of(
                 "cartId", cartId.toString(),
                 "customerName", "Ruben",
                 "street", "S", "number", "1", "postalCode", "2000",
@@ -199,21 +224,55 @@ class OrderFlowIntegrationTest {
         UUID orderId = UUID.fromString(checkoutResp.get("orderId").asText());
         String paymentRef = checkoutResp.get("paymentRef").asText();
 
-        mockMvc.perform(post("/api/payments/" + paymentRef + "/confirm")
+        mockMvc.perform(patch("/api/payments/" + paymentRef + "/status")
                         .header(paymentProperties.webhookSecretHeader(), paymentProperties.webhookSecret()))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         when(restaurantGateway.getStatus(any())).thenReturn(
                 new RestaurantGateway.RestaurantStatusDto(knownRestaurantId, false, null, null));
 
-        mockMvc.perform(post("/api/orders/" + orderId + "/place").with(userJwt()))
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status").with(userJwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("status", "PLACED"))))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void paymentWebhookRejectsWithoutSignature() throws Exception {
-        mockMvc.perform(post("/api/payments/pay_unknown/confirm"))
+        mockMvc.perform(patch("/api/payments/pay_unknown/status"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void cancelSurfacesReasonInTracking() throws Exception {
+        MvcResult createCart = postNoBody("/api/carts");
+        UUID cartId = UUID.fromString(mapper.readTree(createCart.getResponse().getContentAsString()).get("cartId").asText());
+        postJson("/api/carts/" + cartId + "/items", Map.of(
+                "menuItemId", UUID.randomUUID().toString(),
+                "itemName", "Pizza", "quantity", 1, "unitPrice", 10.0,
+                "restaurantId", knownRestaurantId.toString()));
+        JsonNode checkoutResp = postJson("/api/orders", Map.of(
+                "cartId", cartId.toString(),
+                "customerName", "Ruben",
+                "street", "S", "number", "1", "postalCode", "2000",
+                "city", "A", "country", "BE", "email", "r@example.com"));
+        UUID orderId = UUID.fromString(checkoutResp.get("orderId").asText());
+        String paymentRef = checkoutResp.get("paymentRef").asText();
+
+        mockMvc.perform(patch("/api/payments/" + paymentRef + "/status")
+                        .header(paymentProperties.webhookSecretHeader(), paymentProperties.webhookSecret()))
+                .andExpect(status().isNoContent());
+        placeOrderPatch(orderId);
+
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status").with(userJwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELLED\",\"reason\":\"changed my mind\"}"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/orders/" + orderId + "/tracking").with(userJwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.rejectReason").value("changed my mind"));
     }
 
     @Test
@@ -225,7 +284,7 @@ class OrderFlowIntegrationTest {
                 "menuItemId", UUID.randomUUID().toString(),
                 "itemName", "Pizza", "quantity", 1, "unitPrice", 10.0,
                 "restaurantId", knownRestaurantId.toString()));
-        JsonNode checkoutResp = postJson("/api/orders/checkout", Map.of(
+        JsonNode checkoutResp = postJson("/api/orders", Map.of(
                 "cartId", cartId.toString(),
                 "customerName", "Ruben",
                 "street", "S", "number", "1", "postalCode", "2000",
@@ -234,12 +293,12 @@ class OrderFlowIntegrationTest {
         String paymentRef = checkoutResp.get("paymentRef").asText();
 
         // Confirm twice — both succeed, but the order is paid exactly once.
-        mockMvc.perform(post("/api/payments/" + paymentRef + "/confirm")
+        mockMvc.perform(patch("/api/payments/" + paymentRef + "/status")
                         .header(paymentProperties.webhookSecretHeader(), paymentProperties.webhookSecret()))
-                .andExpect(status().isOk());
-        mockMvc.perform(post("/api/payments/" + paymentRef + "/confirm")
+                .andExpect(status().isNoContent());
+        mockMvc.perform(patch("/api/payments/" + paymentRef + "/status")
                         .header(paymentProperties.webhookSecretHeader(), paymentProperties.webhookSecret()))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         Order stored = orderRepository.findById(
                         be.kdg.backend.domain.order.OrderId.of(orderId.toString()))

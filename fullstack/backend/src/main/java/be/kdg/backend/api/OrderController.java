@@ -2,6 +2,7 @@ package be.kdg.backend.api;
 
 import be.kdg.backend.api.dto.CheckoutRequest;
 import be.kdg.backend.api.dto.CheckoutResponse;
+import be.kdg.backend.api.dto.OrderStatusUpdateDto;
 import be.kdg.backend.api.dto.TrackingResponse;
 import be.kdg.backend.application.OrderService;
 import be.kdg.backend.application.tracking.OrderEventEntry;
@@ -32,7 +33,8 @@ public class OrderController {
     private final OrderService orderService;
     private final TrackingService trackingService;
 
-    @PostMapping("/checkout")
+    /** Resource-style create — a checkout creates the order + payment session. */
+    @PostMapping
     public ResponseEntity<CheckoutResponse> checkout(JwtAuthenticationToken auth,
                                                      @Valid @RequestBody CheckoutRequest req) {
         UUID customerId = UUID.fromString(auth.getToken().getSubject());
@@ -44,15 +46,20 @@ public class OrderController {
                 result.orderId(), result.status(), result.paymentRef(), result.redirectUrl()));
     }
 
-    @PostMapping("/{orderId}/place")
-    public ResponseEntity<Void> placeOrder(@PathVariable UUID orderId) {
-        orderService.placeOrder(orderId);
-        return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/{orderId}/cancel")
-    public ResponseEntity<Void> cancelOrder(@PathVariable UUID orderId, @RequestBody CancelReason body) {
-        orderService.cancelOrder(orderId, body.reason());
+    /**
+     * Canonical lifecycle transition (mistake #16): PATCH /orders/{orderId}/status
+     * with body {status: PLACED|CANCELLED, reason?}.
+     */
+    @PatchMapping("/{orderId}/status")
+    public ResponseEntity<Void> updateOrderStatus(@PathVariable UUID orderId,
+                                                  @Valid @RequestBody OrderStatusUpdateDto body) {
+        switch (body.status().toUpperCase()) {
+            case "PLACED" -> orderService.placeOrder(orderId);
+            case "CANCELLED" -> orderService.cancelOrder(orderId,
+                    body.reason() == null ? "Cancelled by customer" : body.reason());
+            default -> throw new IllegalArgumentException(
+                    "Unsupported status '" + body.status() + "' — expected PLACED|CANCELLED");
+        }
         return ResponseEntity.noContent().build();
     }
 
@@ -135,8 +142,6 @@ public class OrderController {
             );
         }
     }
-
-    public record CancelReason(String reason) {}
 
     public record OrderDetail(
             UUID orderId,

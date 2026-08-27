@@ -27,7 +27,7 @@ public class AutoRejectScheduler {
     @Value("${kdg.order.auto-reject-timeout-minutes:5}")
     private int timeoutMinutes;
 
-    @Scheduled(fixedDelayString = "${kdg.order.auto-reject-poll-seconds:30}000")
+    @Scheduled(fixedDelayString = "PT${kdg.order.auto-reject-poll-seconds:30}S")
     public void rejectStalePlacedOrders() {
         LocalDateTime cutoff = LocalDateTime.now().minusMinutes(timeoutMinutes);
         List<Order> stale = orderRepository.findPlacedBefore(cutoff);

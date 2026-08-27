@@ -79,7 +79,7 @@ Authorization: Bearer {{accessToken}}
 
 ### 6. Checkout (US17 / US18 / US19 / US20) — customerId comes from JWT
 # @name checkout
-POST {{baseUrl}}/api/orders/checkout
+POST {{baseUrl}}/api/orders
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
@@ -102,12 +102,15 @@ Content-Type: application/json
 %}
 
 ### 7. Confirm payment (stub webhook — permitAll but requires shared-secret header)
-POST {{baseUrl}}/api/payments/{{paymentRef}}/confirm
+PATCH {{baseUrl}}/api/payments/{{paymentRef}}/status
 X-Payment-Signature: dev-secret-change-me
 
 ### 8. Place order (US18 freeze; publishes order.placed)
-POST {{baseUrl}}/api/orders/{{orderId}}/place
+PATCH {{baseUrl}}/api/orders/{{orderId}}/status
 Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "status": "PLACED" }
 
 ### 9. Tracking (US21 — current status + history)
 GET {{baseUrl}}/api/orders/{{orderId}}/tracking
@@ -118,11 +121,11 @@ GET {{baseUrl}}/api/orders/{{orderId}}
 Authorization: Bearer {{accessToken}}
 
 ### 11. Cancel (only valid until ACCEPTED)
-POST {{baseUrl}}/api/orders/{{orderId}}/cancel
+PATCH {{baseUrl}}/api/orders/{{orderId}}/status
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
-{ "reason": "customer changed mind" }
+{ "status": "CANCELLED", "reason": "customer changed mind" }
 
 ### 12. Customer order history (self, derived from JWT subject)
 GET {{baseUrl}}/api/orders/customer
@@ -131,3 +134,5 @@ Authorization: Bearer {{accessToken}}
 ### 13. Owner order list (role owner)
 GET {{baseUrl}}/api/orders/restaurant/{{restaurantId}}
 Authorization: Bearer {{ownerToken}}
+
+

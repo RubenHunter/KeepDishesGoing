@@ -9,6 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+
 /**
  * US20 payment webhook endpoint (stub).
  *
@@ -27,14 +30,21 @@ public class PaymentWebhookController {
     private final OrderService orderService;
     private final PaymentProperties paymentProperties;
 
-    @PostMapping("/{paymentRef}/confirm")
-    public ResponseEntity<Void> confirmPost(@PathVariable String paymentRef, HttpServletRequest request) {
+    /** Resource-style payment status update (mistake #16): PATCH /payments/{ref}/status. */
+    @PatchMapping("/{paymentRef}/status")
+    public ResponseEntity<Void> updateStatus(@PathVariable String paymentRef, HttpServletRequest request) {
+        confirmInternal(paymentRef, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    private void confirmInternal(String paymentRef, HttpServletRequest request) {
         String signature = request.getHeader(paymentProperties.webhookSecretHeader());
-        if (!paymentProperties.webhookSecret().equals(signature)) {
+        if (signature == null || !MessageDigest.isEqual(
+                paymentProperties.webhookSecret().getBytes(StandardCharsets.UTF_8),
+                signature.getBytes(StandardCharsets.UTF_8))) {
             log.warn("Payment webhook rejected — missing/invalid signature header");
             throw new PaymentSignatureException("Invalid payment webhook signature");
         }
         orderService.confirmPayment(paymentRef);
-        return ResponseEntity.ok().build();
     }
 }

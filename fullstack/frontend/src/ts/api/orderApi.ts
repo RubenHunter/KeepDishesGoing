@@ -20,26 +20,35 @@ export type CheckoutRequest = {
 	email: string;
 };
 
-/** US17/US18 - server validates items + prices, then locks content and price. */
+/** US17/US18 - create checkout (resource POST /orders); validates + locks content and price. */
 export function checkout(body: CheckoutRequest): Promise<CheckoutResponse> {
-	return request(`${base}/checkout`, { method: "POST", body });
+	return request(base, { method: "POST", body });
 }
 
-/** US20 - stub payment provider confirmation (webhook endpoint accepts POST). */
+/** US20 - stub payment provider confirmation (webhook PATCH /payments/{ref}/status). */
 export function confirmPayment(paymentRef: string): Promise<void> {
-	return request(`${API.order}/payments/${encodeURIComponent(paymentRef)}/confirm`, {
-		method: "POST",
+	return request(`${API.order}/payments/${encodeURIComponent(paymentRef)}/status`, {
+		method: "PATCH",
 	});
 }
 
-/** Places the order after (stub) payment - starts the 5-min decision window (US23). */
+/** US18 - place after payment PAID; starts the 5-min decision window (US23). */
 export function placeOrder(orderId: string): Promise<void> {
-	return request(`${base}/${orderId}/place`, { method: "POST" });
+	return setOrderStatus(orderId, "PLACED");
 }
 
 /** Customer cancellation while PLACED/ACCEPTED. */
 export function cancelOrder(orderId: string, reason: string): Promise<void> {
-	return request(`${base}/${orderId}/cancel`, { method: "POST", body: { reason } });
+	return setOrderStatus(orderId, "CANCELLED", reason);
+}
+
+/** One lifecycle endpoint (PATCH /orders/{id}/status). */
+export function setOrderStatus(
+	orderId: string,
+	status: "PLACED" | "CANCELLED",
+	reason?: string,
+): Promise<void> {
+	return request(`${base}/${orderId}/status`, { method: "PATCH", body: { status, reason } });
 }
 
 export function getOrder(orderId: string): Promise<OrderDetail> {
@@ -68,7 +77,7 @@ export function listOrdersByRestaurant(restaurantId: string): Promise<OrderSumma
 	return request(`${base}/restaurant/${restaurantId}`);
 }
 
-/** All orders for the current account (Keycloak subject) — follows the user across devices. */
-export function listOrdersByCustomer(customerId: string): Promise<OrderSummary[]> {
-	return request(`${base}/customer/${customerId}`);
+/** All orders for the current account — identity is derived from the JWT subject server-side. */
+export function listOrdersByCustomer(_customerId?: string): Promise<OrderSummary[]> {
+	return request(`${base}/customer`);
 }

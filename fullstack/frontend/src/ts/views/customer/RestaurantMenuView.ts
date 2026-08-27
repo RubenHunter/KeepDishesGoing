@@ -52,7 +52,9 @@ export class RestaurantMenuView implements View {
 			this.restaurant = { ...restaurant, open: status?.open ?? restaurant.open };
 			this.priceCategory = category;
 			this.menuData = menu;
-			await ensureCart();
+			// Cart needs a session — a guest browsing without login still gets the full menu;
+			// cart init failures only disable add-to-cart, never the whole page.
+			await ensureCart().catch(() => null);
 			this.unsubscribe = onCartChange(() => {
 				if (!this.destroyed) this.paint(root);
 			});

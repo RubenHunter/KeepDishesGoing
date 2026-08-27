@@ -36,9 +36,16 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         // Payment webhook is secured by shared-secret header (see PaymentWebhookController).
                         .requestMatchers("/api/payments/**").permitAll()
-                        // Owner console order list.
+                        // Public catalogue — guests browse restaurants/prices without an account.
+                        .requestMatchers(HttpMethod.GET, "/api/restaurants/**").permitAll()
+                        // Owner console must be checked BEFORE the {orderId} catch-all below.
                         .requestMatchers(HttpMethod.GET, "/api/orders/restaurant/**").hasAuthority("owner")
-                        // Customer-facing carts/customers/orders + restaurant read proxy → any authenticated user.
+                        // Read-only order views stay public for guests (US21/US33 progress screens);
+                        // writes always carry the JWT identity of the customer.
+                        // NOTE: literal identity-bound reads must precede the {orderId} catch-all,
+                        // otherwise an anonymous call would reach a JwtAuthenticationToken controller.
+                        .requestMatchers(HttpMethod.GET, "/api/orders/customer").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/orders/{orderId}/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(rs -> rs

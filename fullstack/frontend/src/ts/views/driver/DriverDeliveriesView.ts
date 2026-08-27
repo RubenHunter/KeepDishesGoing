@@ -245,7 +245,7 @@ export class DriverDeliveriesView implements View {
 		if (!driverId) return;
 		busyButton(btn, true);
 		try {
-			await claimDelivery(deliveryId, driverId);
+			await claimDelivery(deliveryId);
 			toast("Delivery claimed", "success");
 			location.hash = `#/driver/deliveries/${deliveryId}`;
 		} catch (error) {

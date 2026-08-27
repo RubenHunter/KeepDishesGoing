@@ -12,6 +12,15 @@ public record PaymentProperties(
         String webhookSecretHeader,
         Stub stub
 ) {
+    public PaymentProperties {
+        if (webhookSecret == null || webhookSecret.isBlank()) {
+            throw new IllegalStateException("kdg.payment.webhook-secret must not be blank");
+        }
+        if (webhookSecretHeader == null || webhookSecretHeader.isBlank()) {
+            throw new IllegalStateException("kdg.payment.webhook-secret-header must not be blank");
+        }
+    }
+
     /**
      * Stub provider dev config. {@code redirectTemplate} may contain a {@code {orderId}} placeholder
      * resolved at runtime; it points the browser at the frontend tracking page after (stub) payment.

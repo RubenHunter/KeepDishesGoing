@@ -3,7 +3,8 @@ import type { Eur } from "./types.ts";
 /**
  * Delivery lifecycle (delivery-service DeliveryStatus):
  * PENDING (available, US28) → ASSIGNED (claimed, US27) → READY_FOR_PICKUP
- * → PICKED_UP → IN_TRANSIT → DELIVERED. CANCELLED via cancel-claim (US29).
+ * → PICKED_UP → IN_TRANSIT → DELIVERED. CANCELLED = release claim (US29),
+ * all via PATCH /deliveries/{id}/status.
  */
 export type DeliveryStatus =
 	| "PENDING"

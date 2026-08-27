@@ -1,4 +1,4 @@
-import { getSession } from "../state/session.ts";
+import { ensureSession, getSession } from "../state/session.ts";
 import { resetUserState } from "../state/userState.ts";
 
 export class ApiError extends Error {
@@ -36,7 +36,7 @@ async function send(url: string, options: Options): Promise<Response> {
 	const headers: Record<string, string> = {};
 	if (body !== undefined) headers["Content-Type"] = "application/json";
 	if (auth) {
-		const session = getSession();
+		const session = await ensureSession();
 		if (session) headers["Authorization"] = `Bearer ${session.token}`;
 	}
 

@@ -1,8 +1,9 @@
 import { KEYCLOAK, tokenEndpoint } from "../config.ts";
-import { setToken, type Session } from "../state/session.ts";
+import { setTokens, type Session } from "../state/session.ts";
 
 type TokenResponse = {
 	access_token: string;
+	refresh_token?: string;
 	expires_in: number;
 };
 
@@ -39,5 +40,5 @@ export async function login(username: string, password: string): Promise<Session
 	}
 
 	const data = (await response.json()) as TokenResponse;
-	return setToken(data.access_token);
+	return setTokens(data.access_token, data.refresh_token);
 }
