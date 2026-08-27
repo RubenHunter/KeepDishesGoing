@@ -3,6 +3,7 @@ import "./css/base.css";
 import "./css/components.css";
 import "./css/views.css";
 
+import { exchangeCode } from "./ts/api/authApi.ts";
 import { renderShell } from "./ts/presenter/layout.ts";
 import { Router } from "./ts/router.ts";
 import { AdminPayoutReportView } from "./ts/views/admin/AdminPayoutReportView.ts";
@@ -24,7 +25,7 @@ import { OwnerOrdersView } from "./ts/views/owner/OwnerOrdersView.ts";
 
 const page = renderShell();
 
-new Router(page)
+const router = new Router(page)
 	// Customer (public)
 	.register({ pattern: "/", view: () => new RestaurantListView() })
 	.register({ pattern: "/restaurants/:id", view: () => new RestaurantMenuView() })
@@ -48,5 +49,19 @@ new Router(page)
 	.register({ pattern: "/admin/payouts", view: () => new AdminPayoutReportView(), role: "admin", loginRedirect: "#/admin/login" })
 	// User (role=user)
 	.register({ pattern: "/user/login", view: () => new LoginView("user", "#/account") })
-	.register({ pattern: "/account", view: () => new AccountView(), role: "user", loginRedirect: "#/user/login" })
-	.start();
+	.register({ pattern: "/account", view: () => new AccountView(), role: "user", loginRedirect: "#/user/login" });
+
+// After Keycloak self-registration the IdP redirects back with `?code=...`.
+// Exchange it up-front so the freshly registered user is already logged in
+// when the router paints the first view.
+void (async () => {
+	const params = new URLSearchParams(location.search);
+	const code = params.get("code");
+	if (code) {
+		history.replaceState(null, "", location.pathname + location.hash);
+		await exchangeCode(code, location.origin + "/").catch(() => {
+			/* code already consumed or invalid — stay a guest */
+		});
+	}
+	router.start();
+})();

@@ -18,6 +18,16 @@ export const KEYCLOAK = {
 	clientSecret: "upJ1DRbuRkHL3RKxRy0ib0ZJ4mkNIjWS",
 } as const;
 
+/**
+ * US20 - payment webhook shared secret. The browser acts as the stub payment
+ * provider and presents this secret in the webhook header (matches the backend
+ * `kdg.payment.webhook-secret` / `-header`). Demo only.
+ */
+export const PAYMENT_WEBHOOK = {
+	secret: "dev-secret-change-me",
+	header: "X-Payment-Signature",
+} as const;
+
 export function tokenEndpoint(): string {
 	return `${KEYCLOAK.url}/realms/${KEYCLOAK.realm}/protocol/openid-connect/token`;
 }

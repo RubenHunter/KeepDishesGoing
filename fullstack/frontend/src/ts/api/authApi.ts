@@ -42,3 +42,35 @@ export async function login(username: string, password: string): Promise<Session
 	const data = (await response.json()) as TokenResponse;
 	return setTokens(data.access_token, data.refresh_token);
 }
+
+/**
+ * Authorization-code exchange — used after Keycloak self-registration redirects
+ * the browser back with `?code=...`. The new user is logged in (token + refresh
+ * stored) without a second manual login.
+ */
+export async function exchangeCode(code: string, redirectUri: string): Promise<Session> {
+	const body = new URLSearchParams({
+		grant_type: "authorization_code",
+		client_id: KEYCLOAK.clientId,
+		code,
+		redirect_uri: redirectUri,
+	});
+	if (KEYCLOAK.clientSecret) body.set("client_secret", KEYCLOAK.clientSecret);
+
+	let response: Response;
+	try {
+		response = await fetch(tokenEndpoint(), {
+			method: "POST",
+			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			body,
+		});
+	} catch {
+		throw new Error("Keycloak unreachable. Is it running on port 8180?");
+	}
+	if (!response.ok) {
+		throw new Error(`Login failed (${response.status})`);
+	}
+
+	const data = (await response.json()) as TokenResponse;
+	return setTokens(data.access_token, data.refresh_token);
+}

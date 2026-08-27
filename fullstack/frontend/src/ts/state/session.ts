@@ -8,6 +8,10 @@ export type Session = {
 	token: string;
 	sub: string;
 	username: string;
+	/** Full name from Keycloak (name claim), falls back to given+family name. */
+	name: string;
+	/** Contact email from Keycloak (email claim) — fallback when no profile is saved yet. */
+	email: string;
 	roles: string[];
 	/** Epoch ms when the access token expires. */
 	expiresAt: number;
@@ -38,6 +42,8 @@ function toSession(token: string, payload: JwtPayload): Session {
 		token,
 		sub: payload.sub,
 		username: payload.preferred_username ?? payload.email ?? payload.sub,
+		name: payload.name ?? [payload.given_name, payload.family_name].filter(Boolean).join(" ").trim(),
+		email: payload.email ?? "",
 		roles: rolesOf(payload),
 		expiresAt: (payload.exp ?? 0) * 1000,
 	};

@@ -59,7 +59,7 @@ export async function loadProfile(): Promise<CustomerProfile | null> {
 	const sub = getSession()?.sub;
 	if (!sub) return null;
 	try {
-		const profile = toLocal(await getCustomerProfile(sub));
+		const profile = toLocal(await getCustomerProfile());
 		save(key(), profile);
 		return profile;
 	} catch {
@@ -73,7 +73,7 @@ export async function saveProfile(profile: CustomerProfile): Promise<void> {
 	const sub = getSession()?.sub;
 	if (!sub) return;
 	try {
-		await saveCustomerProfile(sub, toBackend(profile));
+		await saveCustomerProfile(toBackend(profile));
 	} catch {
 		/* backend unavailable — profile stays local */
 	}

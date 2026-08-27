@@ -7,7 +7,9 @@ import be.kdg.backend.domain.order.Order;
 import be.kdg.backend.domain.order.OrderRepository;
 import be.kdg.backend.domain.order.OrderStatus;
 import be.kdg.backend.infrastructure.persistence.cart.SpringDataCartJpaRepository;
+import be.kdg.backend.infrastructure.persistence.customer.SpringDataCustomerJpaRepository;
 import be.kdg.backend.infrastructure.persistence.order.SpringDataOrderJpaRepository;
+import be.kdg.backend.security.KeycloakRealmRoleConverter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -25,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -35,6 +38,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -56,6 +60,7 @@ class OrderFlowIntegrationTest {
     @Autowired PaymentProperties paymentProperties;
     @Autowired SpringDataOrderJpaRepository orderJpaRepository;
     @Autowired SpringDataCartJpaRepository cartJpaRepository;
+    @Autowired SpringDataCustomerJpaRepository customerJpaRepository;
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -69,12 +74,21 @@ class OrderFlowIntegrationTest {
     void cleanUp() {
         orderJpaRepository.deleteAll();
         cartJpaRepository.deleteAll();
+        customerJpaRepository.deleteAll();
     }
 
     private static RequestPostProcessor userJwt() {
         return SecurityMockMvcRequestPostProcessors.jwt()
                 .jwt(jwt -> jwt.subject(CUSTOMER_SUB)
-                        .claim("realm_access", Map.of("roles", List.of("user"))));
+                        .claim("realm_access", Map.of("roles", List.of("user"))))
+                .authorities(new KeycloakRealmRoleConverter());
+    }
+
+    private static RequestPostProcessor jwtWithRoles(String... roles) {
+        return SecurityMockMvcRequestPostProcessors.jwt()
+                .jwt(jwt -> jwt.subject(UUID.randomUUID().toString())
+                        .claim("realm_access", Map.of("roles", Arrays.asList(roles))))
+                .authorities(new KeycloakRealmRoleConverter());
     }
 
     @BeforeEach
@@ -241,6 +255,47 @@ class OrderFlowIntegrationTest {
     void paymentWebhookRejectsWithoutSignature() throws Exception {
         mockMvc.perform(patch("/api/payments/pay_unknown/status"))
                 .andExpect(status().isForbidden());
+    }
+
+    /**
+     * Owner console authz: a valid JWT with the {@code owner} realm role is admitted (200);
+     * a valid JWT without the role is forbidden (403), never unauthenticated (401). Only a
+     * missing token yields 401.
+     */
+    @Test
+    void ownerConsoleRoleEnforced() throws Exception {
+        mockMvc.perform(get("/api/orders/restaurant/" + UUID.randomUUID()).with(jwtWithRoles("owner", "user")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/orders/restaurant/" + UUID.randomUUID()).with(jwtWithRoles("user")))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/orders/restaurant/" + UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /** Customer profile is keyed by the JWT subject: save then read back (US19 account settings). */
+    @Test
+    void customerProfileRoundTrip() throws Exception {
+        mockMvc.perform(get("/api/customers").with(userJwt()))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(put("/api/customers").with(userJwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "name", "Ruben",
+                                "email", "ruben@example.com",
+                                "street", "Langestraat",
+                                "number", "1",
+                                "postalCode", "2000",
+                                "city", "Antwerpen",
+                                "country", "BE"))))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/customers").with(userJwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Ruben"))
+                .andExpect(jsonPath("$.email").value("ruben@example.com"));
     }
 
     @Test

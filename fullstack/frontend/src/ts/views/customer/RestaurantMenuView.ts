@@ -48,8 +48,8 @@ export class RestaurantMenuView implements View {
 				getRestaurantStatus(restaurantId).catch(() => null),
 			]);
 			if (this.destroyed) return;
-			// Open flag: /status is authoritative (proxy boolean is unreliable).
-			this.restaurant = { ...restaurant, open: status?.open ?? restaurant.open };
+			// Open flag: /status openNow is authoritative (time-based, not the manual ACTIVE flag).
+			this.restaurant = { ...restaurant, open: status?.openNow ?? restaurant.open };
 			this.priceCategory = category;
 			this.menuData = menu;
 			// Cart needs a session — a guest browsing without login still gets the full menu;

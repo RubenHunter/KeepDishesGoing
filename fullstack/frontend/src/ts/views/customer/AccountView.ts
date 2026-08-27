@@ -44,9 +44,10 @@ export class AccountView implements View {
 
 	private profileSection(root: HTMLElement): HTMLElement {
 		const saved = savedProfile();
+		const session = getSession();
 
-		const nameInput = h("input", { class: "input", value: saved?.name ?? "", placeholder: "Your full name", autocomplete: "name" });
-		const emailInput = h("input", { class: "input", type: "email", value: saved?.email ?? "", placeholder: "you@example.com", autocomplete: "email" });
+		const nameInput = h("input", { class: "input", value: saved?.name ?? session?.name ?? "", placeholder: "Your full name", autocomplete: "name" });
+		const emailInput = h("input", { class: "input", type: "email", value: saved?.email ?? session?.email ?? "", placeholder: "you@example.com", autocomplete: "email" });
 		const streetInput = h("input", { class: "input", value: saved?.address?.street ?? "", placeholder: "Street" });
 		const numberInput = h("input", { class: "input", value: saved?.address?.number ?? "", placeholder: "Number", style: "max-width:100px" });
 		const postalInput = h("input", { class: "input", value: saved?.address?.postalCode ?? "", placeholder: "Postal code", style: "max-width:120px" });

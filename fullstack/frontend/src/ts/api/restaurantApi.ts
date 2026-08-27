@@ -35,14 +35,21 @@ export function getMenu(restaurantId: string): Promise<Dish[]> {
 
 export function getRestaurantStatus(
 	id: string,
-): Promise<{ open: boolean; status: RestaurantStatus; message: string }> {
-	return request<{ isOpen?: boolean; open?: boolean; status: RestaurantStatus; message?: string }>(
-		`${restaurant}/restaurants/${id}/status`,
-	).then((r) => ({
-		open: r.isOpen ?? r.open ?? r.status === "ACTIVE",
-		status: r.status,
-		message: r.message ?? "",
-	}));
+): Promise<{ open: boolean; openNow: boolean; status: RestaurantStatus; message: string }> {
+	return request<{
+		isOpen?: boolean;
+		openNow?: boolean;
+		status: RestaurantStatus;
+		message?: string;
+	}>(`${restaurant}/restaurants/${id}/status`).then((r) => {
+		const manual = r.isOpen ?? r.status === "ACTIVE";
+		return {
+			open: manual,
+			openNow: r.openNow ?? manual,
+			status: r.status,
+			message: r.message ?? "",
+		};
+	});
 }
 
 // ---------- Owner (role=owner) ----------

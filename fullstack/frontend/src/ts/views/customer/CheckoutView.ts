@@ -1,7 +1,7 @@
 import { checkout, confirmPayment, placeOrder } from "../../api/orderApi.ts";
 import { rememberOrder } from "../../infrastructure/recentOrders.ts";
 import { refreshMyOrders } from "../../state/myOrders.ts";
-import { currentCart, customerId, empty, ensureCart } from "../../state/cart.ts";
+import { currentCart, empty, ensureCart } from "../../state/cart.ts";
 import {
 	badge,
 	breadcrumb,
@@ -47,12 +47,15 @@ export class CheckoutView implements View {
 
 		const profile = savedProfile();
 		const home = savedHomeAddress();
+		const session = getSession();
 
 		// Prefill from the logged-in account, never from another user's saved profile.
-		const defaultName = profile?.name ?? getSession()?.username ?? "";
+		// Keycloak name/email are the fallback when no profile has been saved yet.
+		const defaultName = profile?.name ?? session?.name ?? session?.username ?? "";
+		const defaultEmail = profile?.email ?? session?.email ?? "";
 
 		const nameInput = h("input", { class: "input", required: true, autocomplete: "name", value: defaultName });
-		const emailInput = h("input", { class: "input", type: "email", required: true, autocomplete: "email", value: profile?.email ?? "" });
+		const emailInput = h("input", { class: "input", type: "email", required: true, autocomplete: "email", value: defaultEmail });
 		const streetInput = h("input", { class: "input", required: true, autocomplete: "address-line1", value: home?.street ?? "" });
 		const numberInput = h("input", { class: "input", required: true, autocomplete: "address-line2", value: home?.number ?? "" });
 		const postalInput = h("input", { class: "input", required: true, autocomplete: "postal-code", value: home?.postalCode ?? "" });
@@ -144,7 +147,6 @@ export class CheckoutView implements View {
 		try {
 			const result = await checkout({
 				cartId: cart.cartId,
-				customerId: customerId(),
 				...form,
 			});
 			this.paintPayment(root, result.orderId, result.paymentRef, cart.total, form.customerName);

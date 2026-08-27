@@ -16,6 +16,10 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 		if (value === undefined || value === false) continue;
 		if (key.startsWith("on") && typeof value === "function") {
 			el.addEventListener(key.slice(2).toLowerCase(), value);
+		} else if (key === "type" && tag === "input") {
+			// The `type` IDL property is the only reliable way to set an input's type —
+			// some mobile browsers ignore setAttribute("type", "date"/"email"/…).
+			(el as HTMLInputElement).type = String(value);
 		} else if (value === true) {
 			el.setAttribute(key, "");
 		} else {

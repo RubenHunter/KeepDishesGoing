@@ -69,6 +69,13 @@
 	position: relative;
 }
 
+.nav-sep {
+	color: var(--accent);
+	font-weight: 600;
+	padding-inline: var(--space-1);
+	user-select: none;
+}
+
 .cart-count {
 	position: absolute;
 	top: 0;

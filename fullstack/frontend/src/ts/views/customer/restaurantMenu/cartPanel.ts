@@ -4,6 +4,8 @@ import { badge, modal, toast } from "../../../presenter/components.ts";
 import { h } from "../../../presenter/dom.ts";
 import { money } from "../../../presenter/format.ts";
 import { add, cartRestaurantId, currentCart, resetCart } from "../../../state/cart.ts";
+import { setLoginNotice } from "../../../state/loginNotice.ts";
+import { getSession } from "../../../state/session.ts";
 
 export function cartPanel(restaurantId: string): HTMLElement {
 	const cart = currentCart();
@@ -65,6 +67,13 @@ export function cartPanel(restaurantId: string): HTMLElement {
 
 /** US16 - adding from another restaurant replaces the cart (with confirmation). */
 export async function addToCart(restaurant: RestaurantDetail, dish: Dish): Promise<void> {
+	// Guests have no server cart — send them to the login view with a clear message.
+	if (!getSession()) {
+		setLoginNotice("Please log in to add dishes to your cart", location.hash);
+		location.hash = "#/user/login";
+		return;
+	}
+
 	const otherRestaurant =
 		cartRestaurantId() !== null && cartRestaurantId() !== restaurant.id;
 

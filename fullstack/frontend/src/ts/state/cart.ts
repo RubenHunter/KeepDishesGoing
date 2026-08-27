@@ -12,8 +12,9 @@ import { load, remove, save } from "../infrastructure/storage.ts";
 import { getSession } from "./session.ts";
 
 /**
- * Server-backed cart state. Browser keeps only customerId + cartId;
- * the server is the source of truth (prices validated at checkout, US17).
+ * Server-backed cart state. Browser keeps only the cartId; the server is the
+ * source of truth (prices validated at checkout, US17). Carts require a login —
+ * guests are sent to the login view instead (see cartPanel.addToCart).
  */
 
 const CUSTOMER_KEY = "kdg.customerId";
@@ -22,26 +23,14 @@ const CART_KEY = "kdg.cartId";
 let cart: ServerCart | null = null;
 const listeners = new Set<() => void>();
 
-export function customerId(): string {
-	// Logged-in users are keyed by their Keycloak subject so order history
-	// follows the account; guests fall back to a browser-local id.
-	const sub = getSession()?.sub;
-	if (sub) return sub;
-	let id = load<string>(CUSTOMER_KEY);
-	if (!id) {
-		id = crypto.randomUUID();
-		save(CUSTOMER_KEY, id);
-	}
-	return id;
-}
-
 export function currentCart(): ServerCart | null {
 	return cart;
 }
 
-/** Load existing cart (page refresh) or create a fresh one lazily. */
+/** Load existing cart (page refresh) or create a fresh one lazily. Requires a session. */
 export async function ensureCart(): Promise<ServerCart> {
 	if (cart) return cart;
+	if (!getSession()) throw new Error("Please log in to add dishes to your cart");
 	const existingId = load<string>(CART_KEY);
 	if (existingId) {
 		try {
@@ -52,7 +41,7 @@ export async function ensureCart(): Promise<ServerCart> {
 			remove(CART_KEY); // stale cart id - start fresh
 		}
 	}
-	cart = await createCart(customerId());
+	cart = await createCart();
 	save(CART_KEY, cart.cartId);
 	notify();
 	return cart;
@@ -73,7 +62,7 @@ export async function resetCart(): Promise<ServerCart> {
 		}
 	}
 	remove(CART_KEY);
-	cart = await createCart(customerId());
+	cart = await createCart();
 	save(CART_KEY, cart.cartId);
 	notify();
 	return cart;

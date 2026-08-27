@@ -5,8 +5,8 @@ import {
 	type RestaurantType,
 } from "../../../domain/Restaurant.ts";
 
-/** A restaurant card enriched with its € price category (US39). */
-export type CardModel = Restaurant & { priceCategory: PriceCategory | null };
+/** A restaurant card enriched with its € price category (US39) + time-based open flag. */
+export type CardModel = Restaurant & { priceCategory: PriceCategory | null; openNow: boolean };
 
 export type SortKey = "recommended" | "distance" | "cost" | "name";
 

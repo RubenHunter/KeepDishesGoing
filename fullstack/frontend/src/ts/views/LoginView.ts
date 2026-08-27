@@ -1,15 +1,17 @@
 import { login } from "../api/authApi.ts";
 import { KEYCLOAK } from "../config.ts";
 import { hasRole, type Role } from "../state/session.ts";
+import { takeLoginNotice } from "../state/loginNotice.ts";
 import { busyButton, field, toast } from "../presenter/components.ts";
 import { h, mount } from "../presenter/dom.ts";
 import type { View } from "./View.ts";
 
-/** Keycloak self-registration page (realm has registration allowed; roles assigned by admin). */
+/** Keycloak self-registration page (realm has registration allowed; new accounts get the `user` role via default roles). */
 function registrationUrl(): string {
 	const params = new URLSearchParams({
 		client_id: KEYCLOAK.clientId,
 		response_type: "code",
+		scope: "openid",
 		redirect_uri: location.origin + "/",
 	});
 	return `${KEYCLOAK.url}/realms/${KEYCLOAK.realm}/protocol/openid-connect/registrations?${params}`;
@@ -19,6 +21,7 @@ function registrationUrl(): string {
 export class LoginView implements View {
 	private readonly role: Role;
 	private readonly redirect: string;
+	private returnHash: string | null = null;
 
 	constructor(role: Role, redirect: string) {
 		this.role = role;
@@ -30,6 +33,9 @@ export class LoginView implements View {
 			location.hash = this.redirect;
 			return;
 		}
+
+		const notice = takeLoginNotice();
+		if (notice?.returnHash) this.returnHash = notice.returnHash;
 
 		const usernameInput = h("input", {
 			class: "input",
@@ -99,6 +105,9 @@ export class LoginView implements View {
 						"div",
 						{ class: "card" },
 						h("h1", {}, "Log in"),
+						notice?.message
+							? h("p", { class: "pending-banner", role: "status" }, notice.message)
+							: null,
 						h(
 							"p",
 							{ class: "role-note" },
@@ -136,7 +145,7 @@ export class LoginView implements View {
 				return;
 			}
 			toast(`Welcome, ${username}`, "success");
-			location.hash = this.redirect;
+			location.hash = this.returnHash ?? this.redirect;
 		} catch (error) {
 			busyButton(btn, false);
 			toast(error instanceof Error ? error.message : "Login failed", "error");

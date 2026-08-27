@@ -37,6 +37,6 @@ export type RestaurantDetail = Omit<Restaurant, "status"> & {
 /** US39 - price indication in € symbols */
 export type PriceCategory = "€" | "€€" | "€€€" | "€€€€";
 
-export function isOpen(r: Restaurant): boolean {
-	return r.status === "ACTIVE";
+export function isOpen(r: Restaurant & { openNow?: boolean }): boolean {
+	return r.openNow ?? r.status === "ACTIVE";
 }

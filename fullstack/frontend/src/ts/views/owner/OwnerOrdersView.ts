@@ -31,7 +31,11 @@ export class OwnerOrdersView implements View {
 	private timer: number | null = null;
 	private restaurantId: string | null = null;
 	private lastSnapshot = "";
+	private lastOrders: OrderSummary[] = [];
 	private readonly watched = new Set<string>();
+
+	private static readonly FULL_UUID =
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 	async render(root: HTMLElement): Promise<void> {
 		this.restaurantId = await resolveOwnerRestaurantId();
@@ -77,6 +81,7 @@ export class OwnerOrdersView implements View {
 				})),
 		];
 		if (this.destroyed) return;
+		this.lastOrders = orders;
 		const snapshot = JSON.stringify(orders);
 		if (snapshot !== this.lastSnapshot) {
 			this.lastSnapshot = snapshot;
@@ -196,8 +201,13 @@ export class OwnerOrdersView implements View {
 				class: "cluster",
 				onsubmit: (e: Event) => {
 					e.preventDefault();
-					const id = input.value.trim();
-					if (!id) return;
+					const query = input.value.trim().toLowerCase();
+					if (!query) return;
+					const id = this.resolveOrderId(query);
+					if (!id) {
+						toast("No matching order — enter a full order id or its first characters.", "error");
+						return;
+					}
 					this.watched.add(id);
 					input.value = "";
 					void this.reload(root, true);
@@ -206,6 +216,13 @@ export class OwnerOrdersView implements View {
 			input,
 			h("button", { class: "btn btn-secondary", type: "submit" }, "Watch order"),
 		);
+	}
+
+	/** Accepts a full UUID, or a unique prefix matched against the loaded orders. */
+	private resolveOrderId(query: string): string | null {
+		if (OwnerOrdersView.FULL_UUID.test(query)) return query;
+		const match = this.lastOrders.find((o) => o.orderId.toLowerCase().startsWith(query));
+		return match ? match.orderId : null;
 	}
 
 	private decisionCard(root: HTMLElement, order: OrderSummary): HTMLElement {

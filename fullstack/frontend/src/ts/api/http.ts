@@ -15,6 +15,8 @@ type Options = {
 	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 	body?: unknown;
 	auth?: boolean;
+	/** Extra headers (e.g. the payment webhook shared-secret header). */
+	headers?: Record<string, string>;
 };
 
 /** JSON fetch wrapper. Injects Bearer token when auth=true. Throws ApiError on !ok. */
@@ -32,8 +34,8 @@ export async function requestRaw(url: string, options: Options = {}): Promise<Re
 }
 
 async function send(url: string, options: Options): Promise<Response> {
-	const { method = "GET", body, auth = false } = options;
-	const headers: Record<string, string> = {};
+	const { method = "GET", body, auth = false, headers: extra = {} } = options;
+	const headers: Record<string, string> = { ...extra };
 	if (body !== undefined) headers["Content-Type"] = "application/json";
 	if (auth) {
 		const session = await ensureSession();

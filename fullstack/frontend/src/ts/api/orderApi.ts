@@ -1,4 +1,4 @@
-import { API } from "../config.ts";
+import { API, PAYMENT_WEBHOOK } from "../config.ts";
 import type {
 	CheckoutResponse,
 	OrderDetail,
@@ -10,7 +10,6 @@ const base = `${API.order}/orders`;
 
 export type CheckoutRequest = {
 	cartId: string;
-	customerId: string;
 	customerName: string;
 	street: string;
 	number: string;
@@ -22,13 +21,14 @@ export type CheckoutRequest = {
 
 /** US17/US18 - create checkout (resource POST /orders); validates + locks content and price. */
 export function checkout(body: CheckoutRequest): Promise<CheckoutResponse> {
-	return request(base, { method: "POST", body });
+	return request(base, { method: "POST", body, auth: true });
 }
 
 /** US20 - stub payment provider confirmation (webhook PATCH /payments/{ref}/status). */
 export function confirmPayment(paymentRef: string): Promise<void> {
 	return request(`${API.order}/payments/${encodeURIComponent(paymentRef)}/status`, {
 		method: "PATCH",
+		headers: { [PAYMENT_WEBHOOK.header]: PAYMENT_WEBHOOK.secret },
 	});
 }
 
@@ -48,7 +48,7 @@ export function setOrderStatus(
 	status: "PLACED" | "CANCELLED",
 	reason?: string,
 ): Promise<void> {
-	return request(`${base}/${orderId}/status`, { method: "PATCH", body: { status, reason } });
+	return request(`${base}/${orderId}/status`, { method: "PATCH", body: { status, reason }, auth: true });
 }
 
 export function getOrder(orderId: string): Promise<OrderDetail> {
@@ -74,10 +74,10 @@ export type OrderSummary = {
 };
 
 export function listOrdersByRestaurant(restaurantId: string): Promise<OrderSummary[]> {
-	return request(`${base}/restaurant/${restaurantId}`);
+	return request(`${base}/restaurant/${restaurantId}`, { auth: true });
 }
 
 /** All orders for the current account — identity is derived from the JWT subject server-side. */
 export function listOrdersByCustomer(_customerId?: string): Promise<OrderSummary[]> {
-	return request(`${base}/customer`);
+	return request(`${base}/customer`, { auth: true });
 }

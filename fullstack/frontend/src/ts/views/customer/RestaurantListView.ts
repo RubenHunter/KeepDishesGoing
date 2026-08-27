@@ -1,4 +1,5 @@
-import { getPriceCategory, listRestaurants } from "../../api/restaurantApi.ts";
+import { getPriceCategory, getRestaurantStatus, listRestaurants } from "../../api/restaurantApi.ts";
+import { isOpen } from "../../domain/Restaurant.ts";
 import { emptyState, skeletonCards } from "../../presenter/components.ts";
 import { h, mount } from "../../presenter/dom.ts";
 import { distanceOriginLine } from "../../presenter/geo.ts";
@@ -41,12 +42,15 @@ export class RestaurantListView implements View {
 
 		try {
 			const restaurants = await listRestaurants();
-			// Price category comes from the order-service strategy resolver (US39).
+			// Price category (order-service) + time-based open flag (restaurant-service /status).
 			this.cards = await Promise.all(
-				restaurants.map(async (r) => ({
-					...r,
-					priceCategory: await getPriceCategory(r.id).catch(() => null),
-				})),
+				restaurants.map(async (r) => {
+					const [priceCategory, status] = await Promise.all([
+						getPriceCategory(r.id).catch(() => null),
+						getRestaurantStatus(r.id).catch(() => null),
+					]);
+					return { ...r, priceCategory, openNow: status?.openNow ?? isOpen(r) };
+				}),
 			);
 			if (this.destroyed) return;
 			this.origin = distanceOriginLine();

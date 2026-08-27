@@ -13,12 +13,12 @@ export type BackendProfile = {
 	country: string;
 };
 
-/** Fetch the account profile for the given Keycloak subject (404 → no profile yet). */
-export function getCustomerProfile(customerId: string): Promise<BackendProfile> {
-	return request(`${base}/${customerId}`);
+/** Fetch the account profile for the current JWT subject (404 → no profile yet). */
+export function getCustomerProfile(): Promise<BackendProfile> {
+	return request(`${base}`, { auth: true });
 }
 
 /** Upsert the account profile (account settings follow the user across devices). */
-export function saveCustomerProfile(customerId: string, body: BackendProfile): Promise<void> {
-	return request(`${base}/${customerId}`, { method: "PUT", body });
+export function saveCustomerProfile(body: BackendProfile): Promise<void> {
+	return request(`${base}`, { method: "PUT", body, auth: true });
 }

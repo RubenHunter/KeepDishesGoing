@@ -35,59 +35,61 @@ export function renderShell(): HTMLElement {
 
 function renderNav(nav: HTMLElement): void {
 	const session = getSession();
-	const links: HTMLElement[] = [];
+	const segments: HTMLElement[][] = [];
 	const hasTracked = hasOrders() || recentOrderIds().length > 0;
 
 	// Common links for all authenticated users (or guests)
-	if (session) {
-		links.push(navLink("#/", "Restaurants"), cartLink());
-		if (hasTracked) links.push(navLink("#/orders", "Track orders"));
-	}
+	const common: HTMLElement[] = [navLink("#/", "Restaurants"), cartLink()];
+	if (hasTracked) common.push(navLink("#/orders", "Track orders"));
+	segments.push(common);
 
 	if (hasRole("owner")) {
-		links.push(
+		segments.push([
 			navLink("#/owner", "Dashboard"),
 			navLink("#/owner/menu", "Menu"),
 			navLink("#/owner/orders", "Orders"),
-		);
+		]);
 	}
 	if (hasRole("driver")) {
-		links.push(
+		segments.push([
 			navLink("#/driver", "Deliveries"),
 			navLink("#/driver/earnings", "Earnings"),
-		);
+		]);
 	}
 	if (hasRole("admin")) {
-		links.push(navLink("#/admin/payouts", "Payout reports"));
+		segments.push([navLink("#/admin/payouts", "Payout reports")]);
 	}
 	if (hasRole("user")) {
-		links.push(navLink("#/account", "Account"));
+		segments.push([navLink("#/account", "Account")]);
 	}
 
-	if (!session) {
-		links.push(navLink("#/", "Restaurants"), cartLink());
-		if (hasTracked) links.push(navLink("#/orders", "Track orders"));
-	}
-
-	if (session) {
-		links.push(
-			h(
-				"button",
-				{
-					class: "btn btn-ghost btn-sm",
-					onclick: () => {
-						// Drop session + cart identity. Per-account data (profile,
-						// order history, tracked order) stays keyed by Keycloak sub.
-						resetUserState();
-						toast("Logged out");
-						location.hash = "#/";
+	segments.push([
+		session
+			? h(
+					"button",
+					{
+						class: "btn btn-ghost btn-sm",
+						onclick: () => {
+							// Drop session + cart identity. Per-account data (profile,
+							// order history, tracked order) stays keyed by Keycloak sub.
+							resetUserState();
+							toast("Logged out");
+							location.hash = "#/";
+						},
 					},
-				},
-				`Log out (${session.username})`,
-			),
-		);
-	} else {
-		links.push(navLink("#/user/login", "Sign in"));
+					`Log out (${session.username})`,
+				)
+			: navLink("#/user/login", "Sign in"),
+	]);
+
+	// Flatten role-based segments with a primary-colour '|' separator.
+	const links: HTMLElement[] = [];
+	for (const segment of segments) {
+		if (segment.length === 0) continue;
+		if (links.length > 0) {
+			links.push(h("span", { class: "nav-sep", "aria-hidden": "true" }, "|"));
+		}
+		links.push(...segment);
 	}
 
 	mount(
