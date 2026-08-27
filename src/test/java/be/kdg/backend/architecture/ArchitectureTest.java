@@ -6,6 +6,7 @@ import com.tngtech.archunit.lang.ArchRule;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 
 /**
  * ArchUnit rules mirroring order-service layering invariants for delivery-service.
@@ -41,14 +42,14 @@ class ArchitectureTest {
 
     @ArchTest
     static final ArchRule aggregateRootsAnnotated = classes()
-            .that().resideInAPackage("be.kdg.backend.domain..")
-            .and().haveSimpleNameMatching("(Delivery|DeliveryPerson|Payout)")
+            .that().haveNameMatching(".*\\.(Delivery|DeliveryPerson|Payout)")
+            .and().resideInAPackage("be.kdg.backend.domain..")
             .should().beAnnotatedWith(org.jmolecules.ddd.annotation.AggregateRoot.class)
             .because("Aggregate roots must carry jmolecules @AggregateRoot");
 
     @ArchTest
-    static final ArchRule domainHasNoSetters = noClasses()
-            .that().resideInAPackage("be.kdg.backend.domain..")
-            .should().beAnnotatedWith(lombok.Setter.class)
+    static final ArchRule domainHasNoSetters = noMethods()
+            .that().areDeclaredInClassesThat().resideInAPackage("be.kdg.backend.domain..")
+            .should().haveNameMatching("set[A-Z].*")
             .because("Domain cannot expose setters (coding-mistakes #5)");
 }

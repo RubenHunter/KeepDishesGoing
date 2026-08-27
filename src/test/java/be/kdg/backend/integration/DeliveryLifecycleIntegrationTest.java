@@ -1,12 +1,12 @@
 package be.kdg.backend.integration;
 
 import be.kdg.backend.application.DeliveryService;
-import be.kdg.backend.application.OutboundEventPublisher;
+import be.kdg.backend.application.DeliveryPersonService;
+import be.kdg.backend.application.messaging.OutboundEventPublisher;
 import be.kdg.backend.domain.payout.PayoutRepository;
 import be.kdg.backend.domain.delivery.Delivery;
 import be.kdg.backend.domain.delivery.DeliveryStatus;
 import be.kdg.backend.domain.driver.DeliveryPerson;
-import be.kdg.backend.domain.driver.DeliveryPersonService;
 import be.kdg.backend.domain.shared.Address;
 import be.kdg.backend.domain.shared.DeliveryId;
 import be.kdg.backend.domain.shared.DeliveryPersonId;
@@ -15,7 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
