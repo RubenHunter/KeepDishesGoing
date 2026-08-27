@@ -17,42 +17,42 @@ class PriceCategoryResolverTest {
 
     @Test
     void fastFood() {
-        assertEquals("€", resolver.resolve("FAST_FOOD").symbol());
+        assertEquals("€", resolver.resolve("FAST_FOOD", null).symbol());
     }
 
     @Test
     void broodjes() {
-        assertEquals("€", resolver.resolve("BROODJESZAKEN").symbol());
+        assertEquals("€", resolver.resolve("BROODJESZAKEN", null).symbol());
     }
 
     @Test
     void comfortFood() {
-        assertEquals("€€", resolver.resolve("COMFORT_FOOD").symbol());
+        assertEquals("€€", resolver.resolve("COMFORT_FOOD", null).symbol());
     }
 
     @Test
     void fijnDineren() {
-        assertEquals("€€€", resolver.resolve("FIJN_DINEREN").symbol());
+        assertEquals("€€€", resolver.resolve("FIJN_DINEREN", null).symbol());
     }
 
     @Test
     void visrestaurants() {
-        assertEquals("€€€", resolver.resolve("VISRESTAURANTS").symbol());
+        assertEquals("€€€", resolver.resolve("VISRESTAURANTS", null).symbol());
     }
 
     @Test
     void michelin() {
-        assertEquals("€€€€", resolver.resolve("MICHELIN_STER").symbol());
+        assertEquals("€€€€", resolver.resolve("MICHELIN_STER", null).symbol());
     }
 
     @Test
     void unknownFallsBackToDefault() {
-        assertEquals("€", resolver.resolve("???").symbol());
+        assertEquals("€", resolver.resolve("???", null).symbol());
     }
 
     @Test
     void blankFallsBack() {
-        assertEquals("€", resolver.resolve("").symbol());
-        assertEquals("€", resolver.resolve(null).symbol());
+        assertEquals("€", resolver.resolve("", null).symbol());
+        assertEquals("€", resolver.resolve(null, null).symbol());
     }
 }

@@ -11,13 +11,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Order endpoints — public per PDF (customer-facing).
+ * Order endpoints — customer-facing (authenticated) + owner console (role owner).
+ * Customer identity is derived from the JWT subject, never from request bodies/paths.
  * Accept/reject lifecycle events are ingested ONLY through AMQP by handlers in
  * {@code application/messaging/handlers}.
  */
@@ -31,9 +33,11 @@ public class OrderController {
     private final TrackingService trackingService;
 
     @PostMapping("/checkout")
-    public ResponseEntity<CheckoutResponse> checkout(@Valid @RequestBody CheckoutRequest req) {
+    public ResponseEntity<CheckoutResponse> checkout(JwtAuthenticationToken auth,
+                                                     @Valid @RequestBody CheckoutRequest req) {
+        UUID customerId = UUID.fromString(auth.getToken().getSubject());
         OrderService.CheckoutResult result = orderService.checkout(
-                req.cartId(), req.customerId(), req.customerName(),
+                req.cartId(), customerId, req.customerName(),
                 req.street(), req.number(), req.postalCode(), req.city(), req.country(),
                 req.email());
         return ResponseEntity.ok(new CheckoutResponse(
@@ -89,11 +93,12 @@ public class OrderController {
     }
 
     /**
-     * Customer console — all orders for a customer, keyed by the Keycloak subject
-     * so order history follows the account across devices.
+     * Customer console — all orders for the current account, keyed by the Keycloak
+     * subject so order history follows the account across devices.
      */
-    @GetMapping("/customer/{customerId}")
-    public ResponseEntity<List<OrderSummary>> listByCustomer(@PathVariable UUID customerId) {
+    @GetMapping("/customer")
+    public ResponseEntity<List<OrderSummary>> listByCustomer(JwtAuthenticationToken auth) {
+        UUID customerId = UUID.fromString(auth.getToken().getSubject());
         List<Order> orders = orderService.listOrdersForCustomer(customerId);
         return ResponseEntity.ok(orders.stream().map(OrderSummary::from).toList());
     }

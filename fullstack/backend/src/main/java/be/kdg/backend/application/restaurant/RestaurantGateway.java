@@ -1,5 +1,6 @@
 package be.kdg.backend.application.restaurant;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,6 +12,9 @@ public interface RestaurantGateway {
 
     RestaurantDto getRestaurant(UUID restaurantId);
     List<DishDto> getMenu(UUID restaurantId);
+
+    /** US11/US13 — real-time open/closed status computed by restaurant-service. */
+    RestaurantStatusDto getStatus(UUID restaurantId);
 
     /** US17 validates selected items + prices against the restaurant-service live menu. */
     MenuValidationResult validateMenuItems(MenuValidationRequest request);
@@ -24,6 +28,13 @@ public interface RestaurantGateway {
             String logoUrl,
             String restaurantType,
             boolean open
+    ) {}
+
+    record RestaurantStatusDto(
+            UUID restaurantId,
+            boolean openNow,
+            LocalDateTime closingTime,
+            LocalDateTime nextOpening
     ) {}
 
     record DishDto(UUID id, String name, PriceDto price,

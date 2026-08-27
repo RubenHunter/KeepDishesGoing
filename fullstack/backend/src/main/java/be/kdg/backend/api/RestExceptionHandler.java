@@ -2,6 +2,7 @@ package be.kdg.backend.api;
 
 import be.kdg.backend.domain.DomainException;
 import be.kdg.backend.domain.NotFoundException;
+import be.kdg.backend.domain.PaymentSignatureException;
 import be.kdg.backend.domain.ValidationException;
 import be.kdg.backend.domain.order.OrderFrozenException;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,12 @@ public class RestExceptionHandler {
     public ResponseEntity<Map<String, Object>> frozen(OrderFrozenException ex) {
         log.warn("OrderFrozenException: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body(HttpStatus.CONFLICT, ex.getMessage(), "ORDER_FROZEN"));
+    }
+
+    @ExceptionHandler(PaymentSignatureException.class)
+    public ResponseEntity<Map<String, Object>> paymentSignature(PaymentSignatureException ex) {
+        log.warn("PaymentSignatureException: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body(HttpStatus.FORBIDDEN, ex.getMessage(), "INVALID_SIGNATURE"));
     }
 
     @ExceptionHandler(DomainException.class)

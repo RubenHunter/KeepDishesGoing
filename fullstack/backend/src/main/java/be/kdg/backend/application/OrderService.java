@@ -8,6 +8,7 @@ import be.kdg.backend.domain.order.Order;
 import be.kdg.backend.domain.order.OrderId;
 import be.kdg.backend.domain.order.OrderRepository;
 import be.kdg.backend.domain.order.PaymentStatus;
+import be.kdg.backend.domain.order.RestaurantClosedException;
 import be.kdg.backend.domain.shared.Address;
 import be.kdg.backend.domain.shared.CustomerId;
 import be.kdg.backend.domain.shared.Email;
@@ -130,6 +131,7 @@ public class OrderService {
     public void placeOrder(UUID orderId) {
         log.info("placeOrder {}", orderId);
         Order order = loadOrder(orderId);
+        ensureRestaurantOpen(order.restaurantId().value());
         try {
             order.place();
         } catch (RuntimeException e) {
@@ -221,6 +223,17 @@ public class OrderService {
     private Order findByPaymentRef(String paymentRef) {
         return orderRepository.findByPaymentRef(paymentRef)
                 .orElseThrow(() -> new NotFoundException("Order with paymentRef " + paymentRef + " not found"));
+    }
+
+    /** US11 — reject placement while the restaurant is closed (status computed server-side). */
+    private void ensureRestaurantOpen(UUID restaurantId) {
+        RestaurantGateway.RestaurantStatusDto status = restaurantGateway.getStatus(restaurantId);
+        if (!status.openNow()) {
+            String when = status.nextOpening() != null
+                    ? ", opens " + status.nextOpening()
+                    : "";
+            throw new RestaurantClosedException("Restaurant closed" + when);
+        }
     }
 
     /** Checkout result DTO returned by API. */

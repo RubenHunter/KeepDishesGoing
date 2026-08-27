@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -13,6 +14,7 @@ import java.util.UUID;
 /**
  * Customer profile endpoints — account settings (name, contact email, home
  * address) keyed by the Keycloak subject so they follow the user across devices.
+ * The subject is the customerId; it is derived from the JWT, never from the body/path.
  */
 @RestController
 @RequestMapping("/api/customers")
@@ -21,20 +23,24 @@ public class CustomerController {
 
     private final CustomerService customerService;
 
-    @PutMapping("/{customerId}")
-    public ResponseEntity<Void> saveProfile(@PathVariable UUID customerId, @Valid @RequestBody ProfileDto dto) {
+    @PutMapping
+    public ResponseEntity<Void> saveProfile(JwtAuthenticationToken auth, @Valid @RequestBody ProfileDto dto) {
         customerService.saveProfile(
-                customerId,
+                customerId(auth),
                 dto.name(), dto.email(), dto.street(), dto.number(),
                 dto.postalCode(), dto.city(), dto.country());
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{customerId}")
-    public ResponseEntity<ProfileDto> getProfile(@PathVariable UUID customerId) {
-        return customerService.getProfile(customerId)
+    @GetMapping
+    public ResponseEntity<ProfileDto> getProfile(JwtAuthenticationToken auth) {
+        return customerService.getProfile(customerId(auth))
                 .map(c -> ResponseEntity.ok(ProfileDto.from(c)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private static UUID customerId(JwtAuthenticationToken auth) {
+        return UUID.fromString(auth.getToken().getSubject());
     }
 
     public record ProfileDto(

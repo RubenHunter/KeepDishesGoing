@@ -1,55 +1,79 @@
 package be.kdg.backend.integration;
 
 import be.kdg.backend.application.messaging.EventPublisher;
+import be.kdg.backend.application.PaymentProperties;
 import be.kdg.backend.application.restaurant.RestaurantGateway;
 import be.kdg.backend.domain.order.Order;
 import be.kdg.backend.domain.order.OrderRepository;
 import be.kdg.backend.domain.order.OrderStatus;
+import be.kdg.backend.infrastructure.persistence.cart.SpringDataCartJpaRepository;
+import be.kdg.backend.infrastructure.persistence.order.SpringDataOrderJpaRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Integration test — same {@code @SpringBootTest} pattern as
- * {@code testing-demo/src/test/java/be/kdg/ordering/OrdersApplicationTests.java}, but exercising
- * the full cart → checkout → place flow against H2 (test profile) with external ports mocked
- * (RestaurantGateway + EventPublisher + RabbitTemplate — rubric: integration mocks only external infra).
+ * Integration test — full cart → checkout → place flow over HTTP against H2 (test profile) with
+ * external ports mocked (RestaurantGateway + EventPublisher + RabbitTemplate — rubric: integration
+ * mocks only external infra). Security is exercised with a Keycloak-style JWT (realm_access.roles).
+ * No class-level {@code @Transactional} — tests clean up created rows themselves (coding-mistakes #24).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 class OrderFlowIntegrationTest {
 
-    private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
-            new ParameterizedTypeReference<>() {};
+    private static final String CUSTOMER_SUB = UUID.randomUUID().toString();
 
-    @Autowired TestRestTemplate http;
+    @Autowired MockMvc mockMvc;
     @Autowired OrderRepository orderRepository;
+    @Autowired PaymentProperties paymentProperties;
+    @Autowired SpringDataOrderJpaRepository orderJpaRepository;
+    @Autowired SpringDataCartJpaRepository cartJpaRepository;
+
+    private final ObjectMapper mapper = new ObjectMapper();
 
     @MockitoBean RestaurantGateway restaurantGateway;
     @MockitoBean EventPublisher eventPublisher;
-    @MockitoBean org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate;
+    @MockitoBean RabbitTemplate rabbitTemplate;
 
     private UUID knownRestaurantId;
+
+    @AfterEach
+    void cleanUp() {
+        orderJpaRepository.deleteAll();
+        cartJpaRepository.deleteAll();
+    }
+
+    private static RequestPostProcessor userJwt() {
+        return SecurityMockMvcRequestPostProcessors.jwt()
+                .jwt(jwt -> jwt.subject(CUSTOMER_SUB)
+                        .claim("realm_access", Map.of("roles", List.of("user"))));
+    }
 
     @BeforeEach
     void wireGateway() {
@@ -59,47 +83,44 @@ class OrderFlowIntegrationTest {
                         true, "OK",
                         List.of(new RestaurantGateway.MenuValidationResult.ItemValidation(
                                 UUID.randomUUID(), true, 10.0, "ok"))));
+        when(restaurantGateway.getStatus(any())).thenReturn(
+                new RestaurantGateway.RestaurantStatusDto(UUID.randomUUID(), true, null, null));
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> postJson(String url, Object body) {
-        ResponseEntity<Map<String, Object>> resp = http.exchange(
-                url, HttpMethod.POST, new HttpEntity<>(body), MAP_TYPE);
-        assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
-        return resp.getBody();
+    private JsonNode postJson(String url, Object body) throws Exception {
+        MvcResult result = mockMvc.perform(post(url).with(userJwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(body)))
+                .andExpect(status().is2xxSuccessful())
+                .andReturn();
+        return mapper.readTree(result.getResponse().getContentAsString());
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> postJsonAllowingError(String url, Object body) {
-        ResponseEntity<Map<String, Object>> resp = http.exchange(
-                url, HttpMethod.POST, new HttpEntity<>(body), MAP_TYPE);
-        return resp.getBody() == null ? Map.of() : resp.getBody();
+    private MvcResult postNoBody(String url) throws Exception {
+        return mockMvc.perform(post(url).with(userJwt()))
+                .andExpect(status().is2xxSuccessful())
+                .andReturn();
     }
 
     @Test
-    void createCartAddItemsAndCheckout() {
-        UUID customerId = UUID.randomUUID();
-
-        // 1. Create cart
-        Map<String, Object> cart = postJson("/api/carts", Map.of("customerId", customerId));
-        UUID cartId = UUID.fromString((String) cart.get("cartId"));
+    void createCartAddItemsAndCheckout() throws Exception {
+        // 1. Create cart (owner = JWT subject)
+        MvcResult createCart = postNoBody("/api/carts");
+        UUID cartId = UUID.fromString(mapper.readTree(createCart.getResponse().getContentAsString()).get("cartId").asText());
 
         // 2. Add item
         Map<String, Object> addBody = Map.of(
-                "menuItemId", UUID.randomUUID(),
+                "menuItemId", UUID.randomUUID().toString(),
                 "itemName", "Pizza",
                 "quantity", 2,
                 "unitPrice", 10.0,
-                "restaurantId", knownRestaurantId);
-        Map<String, Object> cartAfterAdd = postJson(
-                "/api/carts/" + cartId + "/items", addBody);
-        List<Map<String, Object>> items = (List<Map<String, Object>>) cartAfterAdd.get("items");
-        assertThat(items).hasSize(1);
+                "restaurantId", knownRestaurantId.toString());
+        JsonNode cartAfterAdd = postJson("/api/carts/" + cartId + "/items", addBody);
+        org.assertj.core.api.Assertions.assertThat(cartAfterAdd.get("items")).hasSize(1);
 
-        // 3. Checkout
+        // 3. Checkout (customerId comes from the JWT, not the body)
         Map<String, Object> checkoutBody = Map.of(
-                "cartId", cartId,
-                "customerId", customerId,
+                "cartId", cartId.toString(),
                 "customerName", "Ruben",
                 "street", "Langestraat",
                 "number", "1",
@@ -107,53 +128,123 @@ class OrderFlowIntegrationTest {
                 "city", "Antwerpen",
                 "country", "BE",
                 "email", "ruben@example.com");
-        Map<String, Object> checkoutResp = postJson("/api/orders/checkout", checkoutBody);
-        UUID orderId = UUID.fromString((String) checkoutResp.get("orderId"));
-        String paymentRef = (String) checkoutResp.get("paymentRef");
-        assertThat(paymentRef).startsWith("pay_");
+        JsonNode checkoutResp = postJson("/api/orders/checkout", checkoutBody);
+        UUID orderId = UUID.fromString(checkoutResp.get("orderId").asText());
+        String paymentRef = checkoutResp.get("paymentRef").asText();
+        org.assertj.core.api.Assertions.assertThat(paymentRef).startsWith("pay_");
 
-        // 4. Confirm payment (stub → PAID)
-        ResponseEntity<Void> confirmResp = http.getForEntity(
-                "/api/payments/" + paymentRef + "/confirm", Void.class);
-        assertThat(confirmResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // 4. Confirm payment (webhook — permitAll but requires the shared-secret header)
+        mockMvc.perform(post("/api/payments/" + paymentRef + "/confirm")
+                        .header(paymentProperties.webhookSecretHeader(), paymentProperties.webhookSecret()))
+                .andExpect(status().isOk());
 
         // 5. Place order — should succeed (PAID) and emit event
-        ResponseEntity<Void> placeResp = http.postForEntity(
-                "/api/orders/" + orderId + "/place", null, Void.class);
-        assertThat(placeResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        postNoBody("/api/orders/" + orderId + "/place");
         verify(eventPublisher).publishOrderPlaced(any());
 
         // 6. Order in DB is PLACED
         Order stored = orderRepository.findById(
-                be.kdg.backend.domain.order.OrderId.of(orderId.toString()))
+                        be.kdg.backend.domain.order.OrderId.of(orderId.toString()))
                 .orElseThrow();
-        assertThat(stored.status()).isEqualTo(OrderStatus.PLACED);
+        org.assertj.core.api.Assertions.assertThat(stored.status()).isEqualTo(OrderStatus.PLACED);
     }
 
     @Test
-    void checkoutRejectsWhenMenuValidationFails() {
+    void checkoutRejectsWhenMenuValidationFails() throws Exception {
         when(restaurantGateway.validateMenuItems(any())).thenReturn(
                 new RestaurantGateway.MenuValidationResult(false, "Dish not published", List.of()));
 
-        UUID customerId = UUID.randomUUID();
-        Map<String, Object> cart = postJson("/api/carts", Map.of("customerId", customerId));
-        UUID cartId = UUID.fromString((String) cart.get("cartId"));
+        MvcResult createCart = postNoBody("/api/carts");
+        UUID cartId = UUID.fromString(mapper.readTree(createCart.getResponse().getContentAsString()).get("cartId").asText());
 
         Map<String, Object> addBody = Map.of(
-                "menuItemId", UUID.randomUUID(),
+                "menuItemId", UUID.randomUUID().toString(),
                 "itemName", "Pizza", "quantity", 1, "unitPrice", 10.0,
-                "restaurantId", knownRestaurantId);
+                "restaurantId", knownRestaurantId.toString());
         postJson("/api/carts/" + cartId + "/items", addBody);
 
         Map<String, Object> checkoutBody = Map.of(
-                "cartId", cartId,
-                "customerId", customerId,
+                "cartId", cartId.toString(),
                 "customerName", "Ruben",
                 "street", "S", "number", "1", "postalCode", "2000",
                 "city", "A", "country", "BE", "email", "r@example.com");
-        ResponseEntity<Map<String, Object>> resp = http.exchange(
-                "/api/orders/checkout", HttpMethod.POST,
-                new HttpEntity<>(checkoutBody), MAP_TYPE);
-        assertThat(resp.getStatusCode().is4xxClientError()).isTrue();
+        mockMvc.perform(post("/api/orders/checkout").with(userJwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(checkoutBody)))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void unauthenticatedRequestsAreRejected() throws Exception {
+        mockMvc.perform(get("/api/orders/customer"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/carts"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void placeRejectedWhenRestaurantClosed() throws Exception {
+        MvcResult createCart = postNoBody("/api/carts");
+        UUID cartId = UUID.fromString(mapper.readTree(createCart.getResponse().getContentAsString()).get("cartId").asText());
+        postJson("/api/carts/" + cartId + "/items", Map.of(
+                "menuItemId", UUID.randomUUID().toString(),
+                "itemName", "Pizza", "quantity", 1, "unitPrice", 10.0,
+                "restaurantId", knownRestaurantId.toString()));
+        JsonNode checkoutResp = postJson("/api/orders/checkout", Map.of(
+                "cartId", cartId.toString(),
+                "customerName", "Ruben",
+                "street", "S", "number", "1", "postalCode", "2000",
+                "city", "A", "country", "BE", "email", "r@example.com"));
+        UUID orderId = UUID.fromString(checkoutResp.get("orderId").asText());
+        String paymentRef = checkoutResp.get("paymentRef").asText();
+
+        mockMvc.perform(post("/api/payments/" + paymentRef + "/confirm")
+                        .header(paymentProperties.webhookSecretHeader(), paymentProperties.webhookSecret()))
+                .andExpect(status().isOk());
+
+        when(restaurantGateway.getStatus(any())).thenReturn(
+                new RestaurantGateway.RestaurantStatusDto(knownRestaurantId, false, null, null));
+
+        mockMvc.perform(post("/api/orders/" + orderId + "/place").with(userJwt()))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void paymentWebhookRejectsWithoutSignature() throws Exception {
+        mockMvc.perform(post("/api/payments/pay_unknown/confirm"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void paymentWebhookConfirmsOnlyOnce() throws Exception {
+        // Full flow to obtain a real paymentRef.
+        MvcResult createCart = postNoBody("/api/carts");
+        UUID cartId = UUID.fromString(mapper.readTree(createCart.getResponse().getContentAsString()).get("cartId").asText());
+        postJson("/api/carts/" + cartId + "/items", Map.of(
+                "menuItemId", UUID.randomUUID().toString(),
+                "itemName", "Pizza", "quantity", 1, "unitPrice", 10.0,
+                "restaurantId", knownRestaurantId.toString()));
+        JsonNode checkoutResp = postJson("/api/orders/checkout", Map.of(
+                "cartId", cartId.toString(),
+                "customerName", "Ruben",
+                "street", "S", "number", "1", "postalCode", "2000",
+                "city", "A", "country", "BE", "email", "r@example.com"));
+        UUID orderId = UUID.fromString(checkoutResp.get("orderId").asText());
+        String paymentRef = checkoutResp.get("paymentRef").asText();
+
+        // Confirm twice — both succeed, but the order is paid exactly once.
+        mockMvc.perform(post("/api/payments/" + paymentRef + "/confirm")
+                        .header(paymentProperties.webhookSecretHeader(), paymentProperties.webhookSecret()))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/payments/" + paymentRef + "/confirm")
+                        .header(paymentProperties.webhookSecretHeader(), paymentProperties.webhookSecret()))
+                .andExpect(status().isOk());
+
+        Order stored = orderRepository.findById(
+                        be.kdg.backend.domain.order.OrderId.of(orderId.toString()))
+                .orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(stored.paymentStatus())
+                .isEqualTo(be.kdg.backend.domain.order.PaymentStatus.PAID);
     }
 }

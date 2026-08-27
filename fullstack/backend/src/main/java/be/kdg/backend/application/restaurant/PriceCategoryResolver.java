@@ -35,4 +35,21 @@ public class PriceCategoryResolver {
                 .map(s -> new RestaurantGateway.PriceSymbol(s.symbolFor(restaurantType, avgPrice)))
                 .orElseGet(() -> new RestaurantGateway.PriceSymbol(defaultStrategy.symbolFor(restaurantType, avgPrice)));
     }
+
+    /**
+     * US39 — average price of the published menu (null when fewer than 2 priced items).
+     * Kept here so the controller stays a thin mapper over the gateway + resolver.
+     */
+    public Double averagePrice(java.util.List<RestaurantGateway.DishDto> menu) {
+        if (menu == null || menu.isEmpty()) return null;
+        double total = 0;
+        int count = 0;
+        for (RestaurantGateway.DishDto d : menu) {
+            if (d.price() != null && d.price().amount() != null) {
+                total += d.price().amount().doubleValue();
+                count++;
+            }
+        }
+        return count < 2 ? null : total / count;
+    }
 }

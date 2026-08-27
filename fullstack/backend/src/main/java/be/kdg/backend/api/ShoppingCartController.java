@@ -2,7 +2,6 @@ package be.kdg.backend.api;
 
 import be.kdg.backend.api.dto.AddCartItemRequest;
 import be.kdg.backend.api.dto.CartResponse;
-import be.kdg.backend.api.dto.CreateCartRequest;
 import be.kdg.backend.application.ShoppingCartService;
 import be.kdg.backend.domain.shoppingcart.CartId;
 import be.kdg.backend.domain.shoppingcart.ShoppingCart;
@@ -10,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -17,7 +17,8 @@ import java.net.URI;
 import java.util.UUID;
 
 /**
- * Shopping cart endpoints — public per PDF (customer-facing, no auth on order-service).
+ * Shopping cart endpoints — customer-facing, any authenticated user.
+ * The cart owner (customerId) is derived from the JWT subject, never from the request body.
  */
 @Slf4j
 @RestController
@@ -28,8 +29,9 @@ public class ShoppingCartController {
     private final ShoppingCartService cartService;
 
     @PostMapping
-    public ResponseEntity<CartResponse> createCart(@Valid @RequestBody CreateCartRequest req) {
-        CartId cartId = cartService.createCart(req.customerId());
+    public ResponseEntity<CartResponse> createCart(JwtAuthenticationToken auth) {
+        UUID customerId = UUID.fromString(auth.getToken().getSubject());
+        CartId cartId = cartService.createCart(customerId);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(cartId.value())

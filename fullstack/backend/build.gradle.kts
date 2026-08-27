@@ -37,6 +37,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-amqp")
+	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
 	// DDD with jMolecules (incl. JPA integration so AR annotations map to JPA)
 	implementation("org.jmolecules:jmolecules-ddd:1.9.0")
@@ -51,11 +53,10 @@ dependencies {
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 
-	developmentOnly("org.springframework.boot:spring-boot-starter-actuator")
-
 	// Test
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.amqp:spring-rabbit-test")
+	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("org.jmolecules.integrations:jmolecules-starter-test:0.29.0")
 	testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
 	testImplementation("org.testcontainers:postgresql:1.19.3")

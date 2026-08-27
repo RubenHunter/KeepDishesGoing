@@ -1,28 +1,47 @@
-### Order Service — HTTP scenarios (Step 1 dev)
+### Order Service — HTTP scenarios (dev)
 ### Base URL: http://localhost:8081
-### Public per PDF (no auth on order-service).
+### All customer-facing endpoints require a Keycloak JWT (realm role "user").
+### Owner console order list requires realm role "owner".
+### Payment webhook (/api/payments/**) is open but requires no JWT (stub).
 ### Run top-to-bottom: each request depends on variables set by the previous one.
 ###
 ### Prerequisites:
-###   • order-service running on :8081
-###   • restaurant-service running on :8080  (menu + proxy endpoints call it)
+###   • Keycloak on :8180 (realm keepdishesgoing), a user with realm role "user" (and one with "owner")
+###   • order-service on :8081, restaurant-service on :8080
 ###   • Replace @restaurantId and @menuItemId below with REAL IDs from restaurant-service.
-###     To get them: open restaurant-service's dishtest.http and run create-restaurant → create-dish → publish-dish,
-###     then copy the returned UUIDs here.
 
 ### Variables
-@baseUrl = http://localhost:8081
+@baseUrl    = http://localhost:8081
+@keycloak   = http://localhost:8180
 @restaurantId = 11111111-1111-1111-1111-111111111111
 @menuItemId  = 22222222-2222-2222-2222-222222222222
 
-### 1. Create cart (returns cartId)
+### 0. Acquire a customer access token (password grant — realm role "user")
+# @name customerToken
+POST {{keycloak}}/realms/keepdishesgoing/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=restaurant-service&client_secret=upJ1DRbuRkHL3RKxRy0ib0ZJ4mkNIjWS&username=customer&password=customer
+
+> {%
+    client.global.set("accessToken", response.body.access_token);
+%}
+
+### 0b. (Optional) Owner access token for the order-list endpoint (realm role "owner")
+# @name ownerToken
+POST {{keycloak}}/realms/keepdishesgoing/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=restaurant-service&client_secret=upJ1DRbuRkHL3RKxRy0ib0ZJ4mkNIjWS&username=owner&password=owner
+
+> {%
+    client.global.set("ownerToken", response.body.access_token);
+%}
+
+### 1. Create cart (owner = JWT subject; no customerId in body)
 # @name createCart
 POST {{baseUrl}}/api/carts
-Content-Type: application/json
-
-{
-  "customerId": "33333333-3333-3333-3333-333333333333"
-}
+Authorization: Bearer {{accessToken}}
 
 > {%
     client.global.set("cartId", response.body.cartId);
@@ -32,6 +51,7 @@ Content-Type: application/json
 ### 2. Add item to cart (US15 / US16 — first add pins the restaurant)
 # @name addItem
 POST {{baseUrl}}/api/carts/{{cartId}}/items
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -44,24 +64,27 @@ Content-Type: application/json
 
 ### 3. Get cart snapshot (review before checkout, US15)
 GET {{baseUrl}}/api/carts/{{cartId}}
+Authorization: Bearer {{accessToken}}
 
 ### 4. Update item quantity
 PATCH {{baseUrl}}/api/carts/{{cartId}}/items/{{menuItemId}}
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 { "quantity": 3 }
 
 ### 5. List menu via proxy (US39 — symbol resolved from restaurant type)
 GET {{baseUrl}}/api/restaurants/{{restaurantId}}/price-category
+Authorization: Bearer {{accessToken}}
 
-### 6. Checkout (US17 / US18 / US19 / US20)
+### 6. Checkout (US17 / US18 / US19 / US20) — customerId comes from JWT
 # @name checkout
 POST {{baseUrl}}/api/orders/checkout
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
   "cartId":       "{{cartId}}",
-  "customerId":   "33333333-3333-3333-3333-333333333333",
   "customerName": "Ruben",
   "street":       "Langestraat",
   "number":       "12",
@@ -78,20 +101,33 @@ Content-Type: application/json
     client.log("paymentRef = " + response.body.paymentRef);
 %}
 
-### 7. Confirm payment (stub — calls back to webhook; US20)
-GET {{baseUrl}}/api/payments/{{paymentRef}}/confirm
+### 7. Confirm payment (stub webhook — permitAll but requires shared-secret header)
+POST {{baseUrl}}/api/payments/{{paymentRef}}/confirm
+X-Payment-Signature: dev-secret-change-me
 
 ### 8. Place order (US18 freeze; publishes order.placed)
 POST {{baseUrl}}/api/orders/{{orderId}}/place
+Authorization: Bearer {{accessToken}}
 
 ### 9. Tracking (US21 — current status + history)
 GET {{baseUrl}}/api/orders/{{orderId}}/tracking
+Authorization: Bearer {{accessToken}}
 
 ### 10. Get order detail
 GET {{baseUrl}}/api/orders/{{orderId}}
+Authorization: Bearer {{accessToken}}
 
 ### 11. Cancel (only valid until ACCEPTED)
 POST {{baseUrl}}/api/orders/{{orderId}}/cancel
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 { "reason": "customer changed mind" }
+
+### 12. Customer order history (self, derived from JWT subject)
+GET {{baseUrl}}/api/orders/customer
+Authorization: Bearer {{accessToken}}
+
+### 13. Owner order list (role owner)
+GET {{baseUrl}}/api/orders/restaurant/{{restaurantId}}
+Authorization: Bearer {{ownerToken}}

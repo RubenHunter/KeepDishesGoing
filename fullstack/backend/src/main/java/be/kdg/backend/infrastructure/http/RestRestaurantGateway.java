@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -75,6 +76,19 @@ public class RestRestaurantGateway implements RestaurantGateway {
         String message = valid ? "OK" : "One or more items failed validation";
         return new MenuValidationResult(valid, message, results);
     }
+
+    @Override
+    public RestaurantStatusDto getStatus(UUID restaurantId) {
+        UpstreamStatusDto status = restaurantClient.get()
+                .uri(restaurantProperties.apiBase() + "/{id}/status", restaurantId)
+                .retrieve()
+                .body(UpstreamStatusDto.class);
+        if (status == null) throw new IllegalStateException("Empty status response for " + restaurantId);
+        return new RestaurantStatusDto(restaurantId, status.openNow(), status.closingTime(), status.nextOpening());
+    }
+
+    /** Wire format of restaurant-service's RestaurantStatusResponse (additive fields only). */
+    private record UpstreamStatusDto(boolean openNow, LocalDateTime closingTime, LocalDateTime nextOpening) {}
 
     @Override
     public RestaurantDto getRestaurant(UUID restaurantId) {
