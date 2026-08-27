@@ -9,14 +9,20 @@ import be.kdg.backend.domain.shared.DeliveryPersonId;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
  * Courier-flows REST endpoints. JWT required (driver role).
+ * The caller identity is the JWT subject — never the request body/query params.
+ * US29/US30: only the assigned courier may cancel/pickup/transit/deliver their delivery.
+ *
+ * Lifecycle transitions use resource-style PATCH /{id}/status (mistake #16).
  */
 @Slf4j
 @RestController
@@ -27,38 +33,45 @@ public class DeliveryController {
     private final DeliveryService deliveryService;
     private final PayoutPolicy payoutPolicy;
 
-    /** US27 — courier claims a delivery (self-assign). */
-    @PostMapping("/{deliveryId}/claim")
-    public ResponseEntity<Void> claim(@PathVariable UUID deliveryId, @RequestBody SelfClaimRequest req) {
-        deliveryService.selfAssignDelivery(DeliveryId.of(deliveryId), DeliveryPersonId.of(req.driverId()), LocalDateTime.now());
-        return ResponseEntity.ok().build();
+    /**
+     * Resource-style lifecycle update. Supported:
+     * ASSIGNED (= self-assign/claim), CANCELLED (= release claim), PICKED_UP,
+     * IN_TRANSIT, DELIVERED.
+     */
+    @PatchMapping("/{deliveryId}/status")
+    public ResponseEntity<Void> updateStatus(@PathVariable UUID deliveryId,
+                                             JwtAuthenticationToken jwt,
+                                             @RequestBody DeliveryStatusUpdate body) {
+        String status = body == null || body.status() == null ? "" : body.status().toUpperCase(Locale.ROOT);
+        return switch (status) {
+            case "ASSIGNED" -> {
+                deliveryService.selfAssignDelivery(DeliveryId.of(deliveryId), driver(jwt), LocalDateTime.now());
+                yield ResponseEntity.ok().build();
+            }
+            case "CANCELLED" -> {
+                String reason = body.reason() == null ? "Cancelled by courier" : body.reason();
+                deliveryService.cancelClaim(DeliveryId.of(deliveryId), driver(jwt), reason, LocalDateTime.now());
+                yield ResponseEntity.noContent().build();
+            }
+            case "PICKED_UP" -> {
+                deliveryService.markPickedUp(DeliveryId.of(deliveryId), driver(jwt), LocalDateTime.now());
+                yield ResponseEntity.ok().build();
+            }
+            case "IN_TRANSIT" -> {
+                deliveryService.markInTransit(DeliveryId.of(deliveryId), driver(jwt), LocalDateTime.now());
+                yield ResponseEntity.ok().build();
+            }
+            case "DELIVERED" -> {
+                deliveryService.markDelivered(DeliveryId.of(deliveryId), driver(jwt), LocalDateTime.now());
+                yield ResponseEntity.ok().build();
+            }
+            default -> throw new IllegalArgumentException(
+                    "Field 'status' must be one of ASSIGNED|CANCELLED|PICKED_UP|IN_TRANSIT|DELIVERED");
+        };
     }
 
-    /** US29 — courier releases the claim (only valid while order not yet READY). */
-    @PostMapping("/{deliveryId}/cancel-claim")
-    public ResponseEntity<Void> cancelClaim(@PathVariable UUID deliveryId, @RequestBody CancelClaimRequest req) {
-        deliveryService.cancelClaim(DeliveryId.of(deliveryId), req.reason(), LocalDateTime.now());
-        return ResponseEntity.noContent().build();
-    }
 
-    @PostMapping("/{deliveryId}/pickup")
-    public ResponseEntity<Void> pickup(@PathVariable UUID deliveryId) {
-        deliveryService.markPickedUp(DeliveryId.of(deliveryId), LocalDateTime.now());
-        return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/{deliveryId}/transit")
-    public ResponseEntity<Void> transit(@PathVariable UUID deliveryId) {
-        deliveryService.markInTransit(DeliveryId.of(deliveryId), LocalDateTime.now());
-        return ResponseEntity.ok().build();
-    }
-
-    /** US30 — final step; triggers Payout calc and OrderDelivered AMQP event. */
-    @PostMapping("/{deliveryId}/deliver")
-    public ResponseEntity<Void> deliver(@PathVariable UUID deliveryId) {
-        deliveryService.markDelivered(DeliveryId.of(deliveryId), LocalDateTime.now());
-        return ResponseEntity.ok().build();
-    }
+    // ---- Read endpoints ----
 
     /** US28 — available-to-claim list. */
     @GetMapping("/available")
@@ -75,13 +88,20 @@ public class DeliveryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DeliveryResponse>> forDriver(@RequestParam UUID driverId) {
+    public ResponseEntity<List<DeliveryResponse>> forDriver(JwtAuthenticationToken jwt) {
         return ResponseEntity.ok(
-                deliveryService.listForDriver(DeliveryPersonId.of(driverId)).stream()
+                deliveryService.listForDriver(driver(jwt)).stream()
                         .map(d -> DeliveryResponse.from(d, payoutPolicy))
                         .toList());
     }
 
-    public record SelfClaimRequest(UUID driverId) {}
     public record CancelClaimRequest(String reason) {}
+
+    /** The caller identity — always the JWT subject, never a body/param. */
+    private static DeliveryPersonId driver(JwtAuthenticationToken jwt) {
+        return DeliveryPersonId.of(jwt.getToken().getSubject());
+    }
+
+    /** Body of PATCH /deliveries/{id}/status — resource-style lifecycle update. */
+    public record DeliveryStatusUpdate(String status, String reason) {}
 }

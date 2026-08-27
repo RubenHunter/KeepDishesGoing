@@ -89,7 +89,7 @@ class DeliveryServiceTest {
         d.selfAssign(driver, now);
         given(deliveryRepository.findById(d.id())).willReturn(Optional.of(d));
 
-        sut.cancelClaim(d.id(), "changed mind", now);
+        sut.cancelClaim(d.id(), driver, "changed mind", now);
 
         verify(deliveryRepository).save(d);
         ArgumentCaptor<InternalEvents.CourierReleasedEvent> cap = ArgumentCaptor.forClass(InternalEvents.CourierReleasedEvent.class);
@@ -105,7 +105,7 @@ class DeliveryServiceTest {
         d.onOrderReadyForPickup(now);
         given(deliveryRepository.findById(d.id())).willReturn(Optional.of(d));
 
-        sut.markPickedUp(d.id(), now);
+        sut.markPickedUp(d.id(), driver, now);
 
         verify(deliveryRepository).save(d);
         verify(outbound).publishPickedUp(d.orderId().value(), d.id().value(), now);
@@ -121,7 +121,7 @@ class DeliveryServiceTest {
         d.markInTransit(now);
         given(deliveryRepository.findById(d.id())).willReturn(Optional.of(d));
 
-        sut.markDelivered(d.id(), now);
+        sut.markDelivered(d.id(), driver, now);
 
         verify(deliveryRepository).save(d);
         verify(outbound).publishDelivered(d.orderId().value(), d.id().value(), now);
@@ -140,5 +140,31 @@ class DeliveryServiceTest {
         DeliveryPersonId driver = DeliveryPersonId.generate();
         given(deliveryRepository.findByDeliveryPersonId(driver)).willReturn(List.of());
         assertThat(sut.listForDriver(driver)).isEmpty();
+    }
+    @Test
+    void markPickedUpRejectedForOtherDriver() {
+        Delivery d = new Delivery(DeliveryId.generate(), OrderId.of(UUID.randomUUID()), addr("P"), addr("D"));
+        DeliveryPersonId owner = DeliveryPersonId.generate();
+        DeliveryPersonId intruder = DeliveryPersonId.generate();
+        d.selfAssign(owner, now);
+        d.onOrderReadyForPickup(now);
+        given(deliveryRepository.findById(d.id())).willReturn(Optional.of(d));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                be.kdg.backend.domain.delivery.DeliveryOwnershipException.class,
+                () -> sut.markPickedUp(d.id(), intruder, now));
+        verify(deliveryRepository, never()).save(any());
+        verify(outbound, never()).publishPickedUp(any(), any(), any());
+    }
+
+    @Test
+    void cancelClaimRequiresAssignedCourier() {
+        Delivery d = new Delivery(DeliveryId.generate(), OrderId.of(UUID.randomUUID()), addr("P"), addr("D"));
+        given(deliveryRepository.findById(d.id())).willReturn(Optional.of(d));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                be.kdg.backend.domain.delivery.DeliveryOwnershipException.class,
+                () -> sut.cancelClaim(d.id(), DeliveryPersonId.generate(), "no claim", now));
+        verify(deliveryRepository, never()).save(any());
     }
 }

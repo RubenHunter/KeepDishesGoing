@@ -75,19 +75,20 @@ class DeliveryApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].deliveryId").value(delivery.id().value().toString()));
 
-        // Claim
-        mockMvc.perform(post("/api/deliveries/" + delivery.id().value() + "/claim").with(driverJwt())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"driverId\":\"" + DRIVER_SUB + "\"}"))
+        // Claim (caller = JWT subject, no body needed)
+        mockMvc.perform(patch("/api/deliveries/" + delivery.id().value() + "/status").with(driverJwt())
+                        .contentType("application/json")
+                        .content("{\"status\":\"ASSIGNED\"}"))
                 .andExpect(status().isOk());
 
         // Get detail
         mockMvc.perform(get("/api/deliveries/" + delivery.id().value()).with(driverJwt()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ASSIGNED"));
+                .andExpect(jsonPath("$.status").value("ASSIGNED"))
+                .andExpect(jsonPath("$.deliveryPersonId").value(DRIVER_SUB));
 
-        // My deliveries
-        mockMvc.perform(get("/api/deliveries?driverId=" + DRIVER_SUB).with(driverJwt()))
+        // My deliveries (caller = JWT subject)
+        mockMvc.perform(get("/api/deliveries").with(driverJwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].deliveryId").value(delivery.id().value().toString()));
 

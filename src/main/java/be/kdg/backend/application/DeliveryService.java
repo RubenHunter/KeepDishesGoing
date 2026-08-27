@@ -70,10 +70,15 @@ public class DeliveryService {
         log.info("Delivery {} claimed by {}, event queued", deliveryId, driverId);
     }
 
+    /**
+     * US29 — releases the claim. The requester must be the courier currently assigned
+     * to the delivery (US31: one active assignment; nobody else may touch it).
+     */
     @Transactional
-    public void cancelClaim(DeliveryId deliveryId, String reason, LocalDateTime now) {
+    public void cancelClaim(DeliveryId deliveryId, DeliveryPersonId requester, String reason, LocalDateTime now) {
         Delivery delivery = deliveryRepository.findById(deliveryId)
                 .orElseThrow(() -> new be.kdg.backend.domain.delivery.DeliveryNotFoundException(deliveryId));
+        requireAssignedCourier(delivery, requester);
         DeliveryPersonId driverId = delivery.deliveryPersonId();
         if (driverId == null) {
             throw new IllegalStateException("No courier assigned to delivery " + deliveryId);
@@ -85,17 +90,34 @@ public class DeliveryService {
         log.info("Courier {} released from delivery {}", driverId, deliveryId);
     }
 
+    /** Authz guard — only the assigned courier may advance their own delivery. */
+    private void requireAssignedCourier(Delivery delivery, DeliveryPersonId requester) {
+        DeliveryPersonId assigned = delivery.deliveryPersonId();
+        if (assigned == null) {
+            throw new be.kdg.backend.domain.delivery.DeliveryOwnershipException(
+                    "Delivery " + delivery.id() + " has no assigned courier yet");
+        }
+        if (!assigned.equals(requester)) {
+            log.warn("Driver {} attempted to act on delivery {} owned by {} — denied",
+                    requester, delivery.id(), assigned);
+            throw new be.kdg.backend.domain.delivery.DeliveryOwnershipException(
+                    "Delivery " + delivery.id() + " is not assigned to you");
+        }
+    }
+
     @Transactional
-    public void markPickedUp(DeliveryId deliveryId, LocalDateTime now) {
+    public void markPickedUp(DeliveryId deliveryId, DeliveryPersonId requester, LocalDateTime now) {
         Delivery delivery = find(deliveryId);
+        requireAssignedCourier(delivery, requester);
         delivery.markPickedUp(now);
         deliveryRepository.save(delivery);
         outbound.publishPickedUp(delivery.orderId().value(), delivery.id().value(), now);
     }
 
     @Transactional
-    public void markInTransit(DeliveryId deliveryId, LocalDateTime now) {
+    public void markInTransit(DeliveryId deliveryId, DeliveryPersonId requester, LocalDateTime now) {
         Delivery delivery = find(deliveryId);
+        requireAssignedCourier(delivery, requester);
         delivery.markInTransit(now);
         deliveryRepository.save(delivery);
     }
@@ -107,8 +129,9 @@ public class DeliveryService {
      *  - publish AMQP OrderDelivered for order-service
      */
     @Transactional
-    public void markDelivered(DeliveryId deliveryId, LocalDateTime now) {
+    public void markDelivered(DeliveryId deliveryId, DeliveryPersonId requester, LocalDateTime now) {
         Delivery delivery = find(deliveryId);
+        requireAssignedCourier(delivery, requester);
         delivery.markDelivered(now);
         deliveryRepository.save(delivery);
         DeliveryPersonId driver = delivery.deliveryPersonId();

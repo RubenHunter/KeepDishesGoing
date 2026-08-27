@@ -39,6 +39,13 @@ public class DeliveryExceptionHandler {
         log.warn("driverBusy: {}", ex.getMessage());
         return status(HttpStatus.CONFLICT, ex.getMessage(), "DRIVER_BUSY");
     }
+    /** US29/US30 — requester is not the courier assigned to this delivery. */
+    @ExceptionHandler(be.kdg.backend.domain.delivery.DeliveryOwnershipException.class)
+    public ResponseEntity<Map<String, Object>> notYourDelivery(
+            be.kdg.backend.domain.delivery.DeliveryOwnershipException ex) {
+        log.warn("notYourDelivery: {}", ex.getMessage());
+        return status(HttpStatus.FORBIDDEN, ex.getMessage(), "NOT_ASSIGNED_COURIER");
+    }
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> illegalState(IllegalStateException ex) {
         log.warn("illegalState: {}", ex.getMessage());

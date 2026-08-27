@@ -40,15 +40,17 @@ class DeliveryLifecycleIntegrationTest {
     @MockitoBean RabbitTemplate rabbitTemplate;
     @MockitoBean OutboundEventPublisher outboundPublisher;
 
+    private DeliveryPersonId driver;
+
     private Delivery setupClaimedAndReadyDelivery() {
         Address pickup = new Address("R", "1", "1000", "B", "BE");
         Address deliv = new Address("K", "2", "1000", "B", "BE");
         Delivery d = deliveryService.onOrderAccepted(
                 OrderId.of(UUID.randomUUID()), pickup, deliv);
-        DeliveryPersonId driver = driverService.registerDriver("Ruben", "BICYCLE");
+        driver = driverService.registerDriver("Ruben", "BICYCLE");
         deliveryService.selfAssignDelivery(d.id(), driver, LocalDateTime.now());
         deliveryService.onOrderReadyForPickup(d.orderId(), LocalDateTime.now());
-        deliveryService.markPickedUp(d.id(), LocalDateTime.now());
+        deliveryService.markPickedUp(d.id(), driver, LocalDateTime.now());
         // Simulate pickup time = 10 min ago, ready = 12 min ago so billable is 10 (within window)
         return d;
     }
@@ -57,7 +59,7 @@ class DeliveryLifecycleIntegrationTest {
     void deliverCreatesPayoutAndPublishesAmqpEvent() {
         Delivery d = setupClaimedAndReadyDelivery();
 
-        deliveryService.markDelivered(d.id(), LocalDateTime.now());
+        deliveryService.markDelivered(d.id(), driver, LocalDateTime.now());
 
         // AMQP called
         org.mockito.Mockito.verify(outboundPublisher).publishDelivered(
