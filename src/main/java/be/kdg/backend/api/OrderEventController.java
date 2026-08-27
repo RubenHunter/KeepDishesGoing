@@ -33,12 +33,31 @@ public class OrderEventController {
     private final PendingOrderStore pendingOrderStore;
     private final OrderAcceptanceService orderAcceptanceService;
 
-    @PostMapping("/{orderId}/accept")
-    public ResponseEntity<Void> acceptOrder(
+    /**
+     * Canonical lifecycle transition (mistake #16): PATCH /orders/{orderId}/status
+     * body {status: ACCEPTED|REJECTED|READY_FOR_PICKUP, reason?, extra?}.
+     */
+    @PatchMapping("/{orderId}/status")
+    public ResponseEntity<Void> updateOrderStatus(
             @PathVariable UUID restaurantId,
             @PathVariable UUID orderId,
-            @RequestBody(required = false) Map<String, String> body) {
+            @RequestBody OrderStatusUpdate body) {
+        String status = body == null || body.status() == null ? "" : body.status().toUpperCase();
+        switch (status) {
+            case "ACCEPTED" -> acceptInternal(restaurantId, orderId, body.extra());
+            case "REJECTED" -> rejectInternal(orderId, body.reason());
+            case "READY_FOR_PICKUP" -> readyInternal(orderId, restaurantId);
+            default -> throw new IllegalArgumentException(
+                    "Unsupported status '" + status + "' — expected ACCEPTED|REJECTED|READY_FOR_PICKUP");
+        }
+        return ResponseEntity.noContent().build();
+    }
 
+    /** Body of PATCH /restaurants/{id}/orders/{orderId}/status. */
+    public record OrderStatusUpdate(String status, String reason, Map<String, String> extra) {}
+
+
+    private void acceptInternal(UUID restaurantId, UUID orderId, Map<String, String> body) {
         orderAcceptanceService.verifyCanAccept(restaurantId, LocalDateTime.now());
 
         String pickupAddress = resolvePickupAddress(restaurantId, body);
@@ -49,30 +68,41 @@ public class OrderEventController {
         outboundEventPublisher.publishOrderAccepted(event);
         pendingOrderStore.remove(orderId.toString());
         log.info("Manual accept order {} pickup={} delivery={}", orderId, pickupAddress, deliveryAddress);
-        return ResponseEntity.noContent().build();
     }
 
+    // REST-BEFORE-REVIEW-2: delete alias once frontend uses PATCH /status {REJECTED}
+    @Deprecated
     @PostMapping("/{orderId}/reject")
     public ResponseEntity<Void> rejectOrder(
             @PathVariable UUID restaurantId,
             @PathVariable UUID orderId,
             @RequestBody(required = false) Map<String, String> body) {
-        String reason = (body != null) ? body.getOrDefault("reason", "Restaurant rejected order") : "Restaurant rejected order";
+        rejectInternal(orderId,
+                (body != null) ? body.getOrDefault("reason", "Restaurant rejected order") : "Restaurant rejected order");
+        return ResponseEntity.noContent().build();
+    }
+
+    private void rejectInternal(UUID orderId, String reason) {
         var event = new InboundEvents.OrderRejectedEvent(orderId, reason, LocalDateTime.now());
         outboundEventPublisher.publishOrderRejected(event);
         pendingOrderStore.remove(orderId.toString());
         log.info("Manual reject order {} — published OrderRejected", orderId);
-        return ResponseEntity.noContent().build();
     }
 
+    // REST-BEFORE-REVIEW-2: delete alias once frontend uses PATCH /status {READY_FOR_PICKUP}
+    @Deprecated
     @PostMapping("/{orderId}/ready")
     public ResponseEntity<Void> markReady(
             @PathVariable UUID restaurantId,
             @PathVariable UUID orderId) {
+        readyInternal(orderId, restaurantId);
+        return ResponseEntity.noContent().build();
+    }
+
+    private void readyInternal(UUID orderId, UUID restaurantId) {
         var event = new InboundEvents.OrderReadyForPickupEvent(orderId, restaurantId, LocalDateTime.now());
         outboundEventPublisher.publishOrderReadyForPickup(event);
         log.info("Manual ready order {} — published OrderReadyForPickup", orderId);
-        return ResponseEntity.noContent().build();
     }
 
     private String resolvePickupAddress(UUID restaurantId, Map<String, String> body) {

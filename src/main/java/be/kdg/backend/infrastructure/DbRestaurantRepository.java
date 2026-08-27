@@ -5,12 +5,14 @@ import be.kdg.backend.domain.restaurant.*;
 import be.kdg.backend.infrastructure.jpa.*;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Primary
 @Repository
+@Transactional(readOnly = true)
 public class DbRestaurantRepository implements IRestaurantRepository {
     private final JpaRestaurantRepository jpaRestaurantRepository;
 
@@ -19,6 +21,7 @@ public class DbRestaurantRepository implements IRestaurantRepository {
     }
 
     @Override
+    @Transactional
     public void save(Restaurant restaurant) {
         final UUID id = restaurant.getId().id();
 

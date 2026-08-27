@@ -100,74 +100,57 @@ public class DishController {
     }
 
     /*
-     /dishes/{dishId}/publish
-     patch, owner
+     Canonical lifecycle transition (mistake #16 — resource PATCH /status).
+     status=PUBLISHED -> publish; DRAFT -> de-publish; available!=null -> US9 out-of-stock.
     */
-    @PatchMapping("/restaurants/{restaurantId}/dishes/{dishId}/publish")
+    @PatchMapping("/restaurants/{restaurantId}/dishes/{dishId}/status")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
-    public void publishDish(@PathVariable final UUID restaurantId, @PathVariable final UUID dishId) {
-        log.info("Publishing dish with id {} from restaurant with id {}", dishId, restaurantId);
-        dishService.publishDish(new RestaurantId(restaurantId), new DishId(dishId));
-
-    }
-    /*
-     /dishes/{dishId}/depublish
-     patch, owner
-     */
-    @PatchMapping("/restaurants/{restaurantId}/dishes/{dishId}/depublish")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
-    public void dePublishDish(@PathVariable final UUID restaurantId, @PathVariable final UUID dishId) {
-        log.info("Depublishing dish with id {} from restaurant with id {}", dishId, restaurantId);
-        dishService.dePublishDish(new RestaurantId(restaurantId), new DishId(dishId));
-    }
-
-    /*
-    /dishes/{dishId}/availability
-    patch, owner, req: SetAvailabilityDto
-     */
-    @PatchMapping("/restaurants/{restaurantId}/dishes/{dishId}/availability")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
-    public void setDishAvailability(
+    public void updateDishStatus(
             @PathVariable final UUID restaurantId,
             @PathVariable final UUID dishId,
-            @RequestBody SetAvailabilityDto dto) {
-        log.info("Setting availability of dish with id {} from restaurant with id {} to {}", dishId, restaurantId, dto.available());
-
-        dishService.setDishAvailability(new RestaurantId(restaurantId), new DishId(dishId), dto.available());
-
+            @RequestBody DishStatusUpdateDto dto) {
+        final RestaurantId rid = new RestaurantId(restaurantId);
+        final DishId did = new DishId(dishId);
+        String status = dto.status() == null ? "" : dto.status().toUpperCase(Locale.ROOT);
+        switch (status) {
+            case "PUBLISHED" -> dishService.publishDish(rid, did);
+            case "DRAFT" -> dishService.dePublishDish(rid, did);
+            case "OUT_OF_STOCK", "AVAILABLE" -> {
+                if (dto.available() == null) {
+                    throw new IllegalArgumentException("Field 'available' is required for availability updates");
+                }
+                dishService.setDishAvailability(rid, did, dto.available());
+            }
+            default -> throw new IllegalArgumentException(
+                    "Unsupported status '" + dto.status()
+                            + "' — expected PUBLISHED|DRAFT|OUT_OF_STOCK|AVAILABLE");
+        }
     }
 
-
     /*
-    /restaurants/{id}/publish_menu
-    post, owner
-     */
-    @PostMapping("/restaurants/{restaurantId}/publish_menu")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
+    Menu publication as a created sub-resource (mistake #16 — no verbs):
+      POST /restaurants/{id}/menu/publications                       -> apply all pending drafts now (US7)
+      POST /restaurants/{id}/menu/publications {"publishAt": ...}    -> schedule the batch for later (US8)
+    */
+    @PostMapping("/restaurants/{restaurantId}/menu/publications")
     @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
-    public void publishMenu(@PathVariable final UUID restaurantId) {
+    public ResponseEntity<MenuPublicationResponse> publishMenu(
+            @PathVariable final UUID restaurantId,
+            @RequestBody(required = false) SchedulePublishDto body) {
+        boolean scheduled = body != null && body.publishAt() != null;
+        if (scheduled) {
+            log.info("Scheduling publish of all draft dishes for restaurant {} at {}", restaurantId, body.publishAt());
+            dishService.schedulePublishAllDraftDishes(new RestaurantId(restaurantId), body.publishAt());
+            return ResponseEntity.accepted().body(new MenuPublicationResponse(true, "SCHEDULED", body.publishAt()));
+        }
         log.info("Publishing all draft dishes for restaurant {}", restaurantId);
         dishService.publishAllDraftDishes(new RestaurantId(restaurantId));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new MenuPublicationResponse(false, "PUBLISHED", null));
     }
 
-
-    /*
-    /restaurants/{id}/schedule_publish
-    post, owner, req: SchedulePublishDto
-     */
-
-    @PostMapping("/restaurants/{restaurantId}/schedule_publish")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("@ownerGuard.canManageRestaurant(#restaurantId)")
-    public void schedulePublish(
-            @PathVariable final UUID restaurantId,
-            @RequestBody SchedulePublishDto dto) {
-        log.info("Scheduling publish of all draft dishes for restaurant {} at {}", restaurantId, dto.publishAt());
-        dishService.schedulePublishAllDraftDishes(new RestaurantId(restaurantId), dto.publishAt());
-    }
+    /** Result of a menu publication request. */
+    public record MenuPublicationResponse(boolean scheduled, String state, java.time.LocalDateTime scheduledAt) {}
 
 
 

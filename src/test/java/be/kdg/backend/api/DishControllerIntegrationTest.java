@@ -89,10 +89,14 @@ class DishControllerIntegrationTest {
         { "name":"Soup","description":"Tomato","price":{"amount":6.50,"currency":"EUR"}, "category":"APPETIZER" }
         """);
 
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, dishId).with(ownerJwt(sub)))
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/status", rid, dishId).with(ownerJwt(sub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/depublish", rid, dishId).with(ownerJwt(sub)))
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/status", rid, dishId).with(ownerJwt(sub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DRAFT\"}"))
                 .andExpect(status().isNoContent());
     }
 
@@ -105,10 +109,14 @@ class DishControllerIntegrationTest {
         { "name":"Curry","description":"Spicy","price":{"amount":11.00,"currency":"EUR"}, "category":"MAIN_COURSE" }
         """);
 
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, dishId).with(ownerJwt(sub)))
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/status", rid, dishId).with(ownerJwt(sub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, dishId).with(ownerJwt(sub)))
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/status", rid, dishId).with(ownerJwt(sub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLICT"))
                 .andExpect(jsonPath("$.message", containsString("already published")));
@@ -127,8 +135,8 @@ class DishControllerIntegrationTest {
         { "name":"DishB","description":"b","price":{"amount":9.00,"currency":"EUR"}, "category":"MAIN_COURSE" }
         """);
 
-        mockMvc.perform(post("/api/restaurants/{rid}/publish_menu", rid).with(ownerJwt(sub)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/api/restaurants/{rid}/menu/publications", rid).with(ownerJwt(sub)))
+                .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/restaurants/{id}/menu", rid).with(ownerJwt(sub)))
                 .andExpect(status().isOk())
@@ -141,8 +149,8 @@ class DishControllerIntegrationTest {
         String sub = java.util.UUID.randomUUID().toString();
         String rid = createRestaurantAs(sub, "US7-noop");
 
-        mockMvc.perform(post("/api/restaurants/{rid}/publish_menu", rid).with(ownerJwt(sub)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/api/restaurants/{rid}/menu/publications", rid).with(ownerJwt(sub)))
+                .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/restaurants/{id}/menu", rid).with(ownerJwt(sub)))
                 .andExpect(status().isOk())
@@ -163,11 +171,11 @@ class DishControllerIntegrationTest {
         """.formatted(LocalDateTime.now().plusSeconds(1));
 
         mockMvc.perform(
-                        post("/api/restaurants/{rid}/schedule_publish", rid)
+                        post("/api/restaurants/{rid}/menu/publications", rid)
                                 .with(ownerJwt(sub))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(payload))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isAccepted());
 
         JpaScheduledPublishEntity job = scheduledRepo.findAll().getFirst();
         jobRunner.run(job.getId());
@@ -188,7 +196,7 @@ class DishControllerIntegrationTest {
         """.formatted(LocalDateTime.now().minusMinutes(1));
 
         mockMvc.perform(
-                        post("/api/restaurants/{rid}/schedule_publish", rid)
+                        post("/api/restaurants/{rid}/menu/publications", rid)
                                 .with(ownerJwt(sub))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(payload))
@@ -205,14 +213,16 @@ class DishControllerIntegrationTest {
         { "name":"Fries","description":"salt","price":{"amount":3.00,"currency":"EUR"}, "category":"APPETIZER" }
         """);
 
-        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, dishId).with(ownerJwt(sub)))
+        mockMvc.perform(patch("/api/restaurants/{rid}/dishes/{dishId}/status", rid, dishId).with(ownerJwt(sub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PUBLISHED\"}"))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(
-                        patch("/api/restaurants/{rid}/dishes/{dishId}/availability", rid, dishId)
+                        patch("/api/restaurants/{rid}/dishes/{dishId}/status", rid, dishId)
                                 .with(ownerJwt(sub))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"available\": false}"))
+                                .content("{\"status\":\"OUT_OF_STOCK\",\"available\": false}"))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/restaurants/{id}/dishes", rid).with(ownerJwt(sub)))
@@ -228,10 +238,10 @@ class DishControllerIntegrationTest {
         String unknownDishId = UUID.randomUUID().toString();
 
         mockMvc.perform(
-                        patch("/api/restaurants/{rid}/dishes/{dishId}/availability", rid, unknownDishId)
+                        patch("/api/restaurants/{rid}/dishes/{dishId}/status", rid, unknownDishId)
                                 .with(ownerJwt(sub))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"available\": false}"))
+                                .content("{\"status\":\"OUT_OF_STOCK\",\"available\": false}"))
                 .andExpect(status().isNotFound());
     }
 

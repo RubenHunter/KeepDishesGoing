@@ -147,8 +147,10 @@ class OwnerAuthorizationIntegrationTest {
 
         // act
         var result = mockMvc.perform(
-                patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, dishId)
+                patch("/api/restaurants/{rid}/dishes/{dishId}/status", rid, dishId)
                         .with(otherJwt(otherSub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PUBLISHED\"}")
         );
 
         // assert
@@ -174,14 +176,18 @@ class OwnerAuthorizationIntegrationTest {
         // publish first 10 -> 204
         for (int i = 0; i < 10; i++) {
             mockMvc.perform(
-                    patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, ids[i])
+                    patch("/api/restaurants/{rid}/dishes/{dishId}/status", rid, ids[i])
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"PUBLISHED\"}")
                             .with(ownerJwt(ownerSub))
             ).andExpect(status().isNoContent());
         }
 
         // attempt to publish 11th -> 409 Conflict
         mockMvc.perform(
-                patch("/api/restaurants/{rid}/dishes/{dishId}/publish", rid, ids[10])
+                patch("/api/restaurants/{rid}/dishes/{dishId}/status", rid, ids[10])
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"PUBLISHED\"}")
                         .with(ownerJwt(ownerSub))
         ).andExpect(status().isConflict());
     }

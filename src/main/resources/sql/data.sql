@@ -8,8 +8,7 @@ INSERT INTO restaurants (id, name, status, owner_id, full_address, email, openin
 ('f1fa2896-5678-9012-0444-546474859607', 'Pizza Hut Antwerp', 'ACTIVE', 'fac748c8-3c61-496e-a8ed-cef1623f9108', 'Keyserlei 43, 2018 Antwerpen, BE', 'pizzahut@kdg.be', 'Mon-Sun 11:00-23:00', '/logos/pizza-hut.png', 'COMFORT_FOOD'),
 ('a1ab3078-6789-0123-0555-657585960718', 'Domino''s Antwerp', 'ACTIVE', '0111fa3c-1c86-4a11-b353-eb1d15c84f8d', 'Sint-Katelijnevest 53, 2000 Antwerpen, BE', 'dominos@kdg.be', 'Mon-Sun 11:00-23:00', '/logos/dominos.png', 'FAST_FOOD'),
 ('b2bc4189-7890-1234-0666-768696071829', 'Five Guys Antwerp', 'ACTIVE', '417cebf9-f902-4460-b790-031795d5f7ed', 'Groenplaats 14, 2000 Antwerpen, BE', 'fiveguys@kdg.be', 'Mon-Sun 11:00-22:00', '/logos/five-guys.png', 'COMFORT_FOOD'),
-('c3cd5290-8901-2345-0777-8797a7182930', 'Giovanni''s Pasta', 'ACTIVE', '5cb4c9ce-8024-4039-b563-5e1d7225ec4f', 'Melkmarkt 17, 2000 Antwerpen, BE', 'giovannis@kdg.be', 'Tue-Sun 12:00-22:00', 'https://cdn.pixabay.com/photo/2017/02/15/15/17/meal-2069021_1280.jpg', 'FIJN_DINEREN');
-
+('c3cd5290-8901-2345-0777-8797a7182930', 'Giovanni''s Pasta', 'ACTIVE', '5cb4c9ce-8024-4039-b563-5e1d7225ec4f', 'Melkmarkt 17, 2000 Antwerpen, BE', 'giovannis@kdg.be', 'Tue-Sun 12:00-22:00', 'https://cdn.pixabay.com/photo/2017/02/15/15/17/meal-2069021_1280.jpg', 'FIJN_DINEREN') ON CONFLICT DO NOTHING;
 -- Dishes for all restaurants
 INSERT INTO dishes (id, restaurant_id, name, description, price, category, status, image_url) VALUES
     ('d1d82f06-3456-7891-0111-213141516171', 'a6a52c73-9070-4128-a988-255383b941bc', 'Large Fries', 'Golden crispy Belgian fries with mayo', 4.50, 'APPETIZER', 'PUBLISHED', 'https://cdn.pixabay.com/photo/2016/11/20/09/06/french-fries-1842283_1280.jpg'),
@@ -30,8 +29,7 @@ INSERT INTO dishes (id, restaurant_id, name, description, price, category, statu
 ('e6ef2897-8901-2345-5455-758595061526', 'b2bc4189-7890-1234-0666-768696071829', 'Bacon Cheeseburger', 'Double patty, bacon, cheddar, jalapenos', 13.50, 'MAIN_COURSE', 'PUBLISHED', '/img/dishes/fg-cheeseburger.jpg'),
 ('f6fe3908-9012-3456-6566-8696a6172637', 'b2bc4189-7890-1234-0666-768696071829', 'Cajun Fries', 'Seasoned fries with Five Guys spice blend', 5.00, 'APPETIZER', 'PUBLISHED', 'https://cdn.pixabay.com/photo/2022/11/25/04/53/fries-7614831_1280.jpg'),
 ('a7af4019-0123-4567-7677-97a7b7283748', 'c3cd5290-8901-2345-0777-8797a7182930', 'Truffle Tagliatelle', 'Fresh pasta with black truffle cream', 22.00, 'MAIN_COURSE', 'PUBLISHED', 'https://cdn.pixabay.com/photo/2017/06/23/00/44/pasta-2433027_1280.jpg'),
-('b8bf5020-1234-5678-8788-a8b8c8394859', 'c3cd5290-8901-2345-0777-8797a7182930', 'Bruschetta al Pomodoro', 'Toasted bread with fresh tomato and basil', 9.00, 'APPETIZER', 'PUBLISHED', 'https://cdn.pixabay.com/photo/2017/01/09/13/21/tomato-1966418_1280.jpg');
-
+('b8bf5020-1234-5678-8788-a8b8c8394859', 'c3cd5290-8901-2345-0777-8797a7182930', 'Bruschetta al Pomodoro', 'Toasted bread with fresh tomato and basil', 9.00, 'APPETIZER', 'PUBLISHED', 'https://cdn.pixabay.com/photo/2017/01/09/13/21/tomato-1966418_1280.jpg') ON CONFLICT DO NOTHING;
 -- Extra menu items with real photos for the brand chains
 INSERT INTO dishes (id, restaurant_id, name, description, price, category, status, image_url) VALUES
     ('c9cd6131-2345-6789-1111-111111111101', 'e0ea1785-4567-8910-0333-435363748596', 'Hot Wings 6pc', 'Spicy fried chicken wings', 6.50, 'MAIN_COURSE', 'PUBLISHED', '/img/dishes/kfc-wings.jpg'),
@@ -40,4 +38,4 @@ INSERT INTO dishes (id, restaurant_id, name, description, price, category, statu
     ('f2fc9464-5678-9012-4444-444444444404', 'f1fa2896-5678-9012-0444-546474859607', 'Garlic Bread Sticks', 'Oven-baked sticks with garlic butter and herbs', 4.00, 'APPETIZER', 'PUBLISHED', '/img/dishes/ph-garlic.jpg'),
     ('a3ad0575-6789-0123-5555-555555555505', 'a1ab3078-6789-0123-0555-657585960718', 'Classic Margherita', 'Hand-tossed pizza with mozzarella and tomato', 8.00, 'MAIN_COURSE', 'PUBLISHED', '/img/dishes/dom-margherita.jpg'),
     ('b4be1686-7890-1234-6666-666666666606', 'a1ab3078-6789-0123-0555-657585960718', 'Chocolate Lava Cake', 'Warm chocolate cake with a molten core', 4.50, 'DESSERT', 'PUBLISHED', '/img/dishes/dom-lava.jpg'),
-    ('c5cf2797-8901-2345-7777-777777777707', 'b2bc4189-7890-1234-0666-768696071829', 'Little Cheeseburger', 'Single patty with lettuce, tomato and grilled onions', 9.00, 'MAIN_COURSE', 'PUBLISHED', '/img/dishes/fg-cheeseburger.jpg');
+    ('c5cf2797-8901-2345-7777-777777777707', 'b2bc4189-7890-1234-0666-768696071829', 'Little Cheeseburger', 'Single patty with lettuce, tomato and grilled onions', 9.00, 'MAIN_COURSE', 'PUBLISHED', '/img/dishes/fg-cheeseburger.jpg') ON CONFLICT DO NOTHING;

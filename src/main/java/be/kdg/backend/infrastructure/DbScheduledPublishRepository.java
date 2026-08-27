@@ -6,6 +6,7 @@ import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishEntity;
 import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishRepository;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 @Primary
 @Repository
+@Transactional(readOnly = true)
 public class DbScheduledPublishRepository implements IScheduledPublishRepository {
     private final JpaScheduledPublishRepository jpa;
 
@@ -21,7 +23,13 @@ public class DbScheduledPublishRepository implements IScheduledPublishRepository
         this.jpa = jpa;
     }
 
+    /**
+     * The JPA query carries a pessimistic row lock (`FOR NO KEY UPDATE`) so two
+     * instances cannot claim the same job — that lock is rejected inside a
+     * read-only transaction, hence this override to a read-write one.
+     */
     @Override
+    @Transactional
     public List<ScheduledPublishJob> findDueForUpdate(LocalDateTime now) {
         return jpa.findDueForUpdate(now).stream().map(this::toDomain).toList();
     }
@@ -32,6 +40,7 @@ public class DbScheduledPublishRepository implements IScheduledPublishRepository
     }
 
     @Override
+    @Transactional
     public void save(ScheduledPublishJob job) {
         // If exists, transition using entity methods; else create a new one.
         JpaScheduledPublishEntity entity = jpa.findById(job.getId()).orElse(null);

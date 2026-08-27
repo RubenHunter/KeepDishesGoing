@@ -147,7 +147,7 @@ public class RestaurantController {
                 isOpen, restaurant.getStatus().name(), statusMessage, openNow, closingTime, nextOpening));
     }
 
-    @PostMapping("/{restaurantId}/menu/{menuItemId}/validate")
+    @PostMapping("/{restaurantId}/menu/{menuItemId}/validation")
     public ResponseEntity<MenuItemValidationResponse> validateMenuItem(
             @PathVariable final UUID restaurantId,
             @PathVariable final UUID menuItemId,

@@ -6,6 +6,7 @@ import be.kdg.backend.infrastructure.jpa.JpaOwnerEntity;
 import be.kdg.backend.infrastructure.jpa.JpaOwnerRepository;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -20,11 +21,13 @@ public class DbOwnerRepository implements IOwnerRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Owner> findByExternalSubjectId(String sub) {
         return jpa.findByExternalSubjectId(sub).map(JpaOwnerEntity::toDomain);
     }
 
     @Override
+    @Transactional
     public void save(Owner owner) {
         jpa.save(JpaOwnerEntity.fromDomain(owner));
     }

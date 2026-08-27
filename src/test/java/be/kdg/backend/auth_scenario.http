@@ -93,11 +93,11 @@ Authorization: Bearer {{owner_token}}
 GET {{server}}/api/restaurants/{{rid}}/menu
 
 ### OWNER FLOW ─ set availability to false
-PATCH {{server}}/api/restaurants/{{rid}}/dishes/{{dishId}}/availability
+PATCH {{server}}/api/restaurants/{{rid}}/dishes/{{dishId}}/status
 Authorization: Bearer {{owner_token}}
 Content-Type: application/json
 
-{ "available": false }
+{ "status": "OUT_OF_STOCK", "available": false }
 
 ### List all dishes of restaurant
 GET {{server}}/api/restaurants/{{rid}}/dishes
@@ -115,8 +115,8 @@ Content-Type: application/json
   "category": "MAIN_COURSE"
 }
 
-### OWNER FLOW ─ publish all drafts immediately
-POST {{server}}/api/restaurants/{{rid}}/publish_menu
+### OWNER FLOW ─ publish all drafts immediately (menu publication sub-resource)
+POST {{server}}/api/restaurants/{{rid}}/menu/publications
 Authorization: Bearer {{owner_token}}
 
 ### OWNER FLOW - verify dishes are published
@@ -124,7 +124,7 @@ GET {{server}}/api/restaurants/{{rid}}/menu
 
 
 ### OWNER FLOW ─ schedule publish all drafts (use a future timestamp)
-POST {{server}}/api/restaurants/{{rid}}/schedule_publish
+POST {{server}}/api/restaurants/{{rid}}/menu/publications
 Authorization: Bearer {{owner_token}}
 Content-Type: application/json
 
