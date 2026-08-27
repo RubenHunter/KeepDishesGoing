@@ -9,6 +9,7 @@ import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.domain.restaurant.RestaurantId;
 import be.kdg.backend.domain.scheduling.IScheduledPublishRepository;
 import be.kdg.backend.domain.scheduling.ScheduledPublishJob;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +23,14 @@ public class DishService {
 
     private final IRestaurantRepository restaurantRepository;
     private final IScheduledPublishRepository scheduledRepo;
+    private final double priceTolerance;
 
     public DishService(IRestaurantRepository restaurantRepository,
-                       IScheduledPublishRepository scheduledRepo) {
+                       IScheduledPublishRepository scheduledRepo,
+                       @Value("${kdg.validation.price-tolerance:0.01}") double priceTolerance) {
         this.restaurantRepository = restaurantRepository;
         this.scheduledRepo = scheduledRepo;
+        this.priceTolerance = priceTolerance;
     }
 
     // Create a draft dish inside the Restaurant aggregate
@@ -49,6 +53,27 @@ public class DishService {
         Restaurant restaurant = restaurantRepository.findByDishId(dishId)
                 .orElseThrow(dishId::notFound);
         return restaurant.getDishById(dishId);
+    }
+
+    /**
+     * US17 — validate one menu item against the live menu. Returns a result object; never throws
+     * for a missing dish (the web layer maps "not found" to a validation response, not an exception).
+     */
+    public MenuItemValidation validateMenuItem(RestaurantId restaurantId, DishId dishId, double expectedPrice) {
+        Optional<Restaurant> owner = restaurantRepository.findByDishId(dishId);
+        if (owner.isEmpty() || !owner.get().getId().equals(restaurantId)) {
+            return MenuItemValidation.notFound();
+        }
+        Dish dish = owner.get().getDishById(dishId);
+        if (dish.getStatus() != DishStatus.PUBLISHED) {
+            return new MenuItemValidation(false, "Dish is not available", null, null, false);
+        }
+        double currentPrice = dish.getPrice().amount().doubleValue();
+        boolean priceValid = Math.abs(currentPrice - expectedPrice) <= priceTolerance;
+        String message = priceValid
+                ? "Validation successful"
+                : String.format("Price mismatch. Current: %.2f, Expected: %.2f", currentPrice, expectedPrice);
+        return new MenuItemValidation(priceValid, message, currentPrice, dish.getPrice().currency(), true);
     }
 
     // List all dishes of a restaurant (never bypass the aggregate root)

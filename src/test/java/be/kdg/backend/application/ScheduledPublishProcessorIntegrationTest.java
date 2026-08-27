@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ScheduledPublishProcessorIntegrationTest {
 
     @Autowired
-    private ScheduledPublishProcessor processor;
+    private ScheduledPublishJobRunner jobRunner;
 
     @Autowired
     private IScheduledPublishRepository scheduledRepo;
@@ -55,7 +55,7 @@ class ScheduledPublishProcessorIntegrationTest {
         scheduledRepo.save(job);
 
         // Act
-        processor.processJob(job.getId());
+        jobRunner.run(job.getId());
 
         // Assert: menu published and job marked done
         assertEquals(1, dishService.getMenuDishes(rid).size());
@@ -77,7 +77,7 @@ class ScheduledPublishProcessorIntegrationTest {
         scheduledRepo.save(job);
 
         // Act
-        processor.processJob(job.getId());
+        jobRunner.run(job.getId());
 
         // Assert: job marked failed and attempts increased
         ScheduledPublishJob persisted = scheduledRepo.getById(job.getId()).orElseThrow();

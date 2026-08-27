@@ -27,7 +27,7 @@ public class TestHelper {
     private JpaScheduledPublishRepository jpaScheduledPublishRepository;
 
     public Restaurant createRestaurant(String name) {
-        RestaurantId id = restaurantService.createRestaurant(name);
+        RestaurantId id = restaurantService.createRestaurant(name, UUID.randomUUID());
         return restaurantService.getRestaurantById(id);
     }
 

@@ -60,3 +60,30 @@ Content-Type: application/json
 {
   "publishAt": "2025-10-15T20:39:00"
 }
+
+### Validate menu item with correct price (US17)
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/menu/{{dishId}}/validate
+Content-Type: application/json
+
+{
+  "expectedPrice": 14.5,
+  "currency": "EUR"
+}
+
+### Validate menu item with wrong price (US17)
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/menu/{{dishId}}/validate
+Content-Type: application/json
+
+{
+  "expectedPrice": 10.0,
+  "currency": "EUR"
+}
+
+### Validate non-existent menu item (US17)
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/menu/00000000-0000-0000-0000-000000000000/validate
+Content-Type: application/json
+
+{
+  "expectedPrice": 15.0,
+  "currency": "EUR"
+}

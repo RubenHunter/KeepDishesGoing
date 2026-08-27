@@ -28,7 +28,7 @@ public class Dish {
         if (price == null) {
             throw new ValidationException("Price must not be null");
         }
-        validatePriceStatic(price);
+        validatePrice(price);
 
         Description safeDescription = (description != null) ? description : new Description("");
         DishCategory safeCategory = (category != null) ? category : DishCategory.MAIN_COURSE;
@@ -50,12 +50,6 @@ public class Dish {
         if (this.status == DishStatus.PUBLISHED) {
             throw new ValidationException("Dish is already published");
         }
-        /*
-        if (this.status == DishStatus.OUT_OF_STOCK) {
-            throw new IllegalStateException("Cannot publish dish that is out of stock");
-        }
-
-         */
         validatePrice(this.price);
         this.status = DishStatus.PUBLISHED;
     }
@@ -86,18 +80,7 @@ public class Dish {
         this.imageUrl = newImageUrl;
     }
 
-    public boolean isAvailable(Price price) {
-        return this.status == DishStatus.PUBLISHED && this.price.isPositive(price.amount());
-    }
-
-    private void validatePrice(Price price) {
-        if (!price.isPositive(price.amount())) {
-            throw new ValidationException("Price must be positive");
-        }
-    }
-
-    //Static version for the static create factory
-    private static void validatePriceStatic(Price price) {
+    private static void validatePrice(Price price) {
         if (!price.isPositive(price.amount())) {
             throw new ValidationException("Price must be positive");
         }

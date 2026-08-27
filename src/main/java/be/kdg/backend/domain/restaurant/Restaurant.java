@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Getter
 @AllArgsConstructor
@@ -160,6 +161,43 @@ public class Restaurant {
             throw new DomainConflictException("Restaurant is already closed");
         }
         this.status = RestaurantStatus.INACTIVE;
+    }
+
+    /**
+     * US11/US13 — real-time open/closed. The manual open/close (status, US12) wins over the schedule:
+     * an INACTIVE restaurant is always closed; an ACTIVE one is open only within its opening hours.
+     */
+    public boolean isOpenOn(LocalDateTime at) {
+        if (status != RestaurantStatus.ACTIVE) return false;
+        if (openingHours == null || openingHours.isBlank()) return false;
+        return OpeningHours.tryParse(openingHours).map(o -> o.isOpenAt(at)).orElse(false);
+    }
+
+    /** Closing moment of the currently-open window (empty when closed / no schedule). */
+    public Optional<LocalDateTime> closingAt(LocalDateTime at) {
+        if (status != RestaurantStatus.ACTIVE) return Optional.empty();
+        if (openingHours == null || openingHours.isBlank()) return Optional.empty();
+        return OpeningHours.tryParse(openingHours).flatMap(o -> o.closingAt(at));
+    }
+
+    /** Next opening moment strictly after {@code at} (empty when no schedule). */
+    public Optional<LocalDateTime> nextOpeningAfter(LocalDateTime at) {
+        if (openingHours == null || openingHours.isBlank()) return Optional.empty();
+        return OpeningHours.tryParse(openingHours).flatMap(o -> o.nextOpeningAfter(at));
+    }
+
+    /**
+     * US14 — true when the restaurant is open at {@code at} and remains open until {@code until}
+     * (i.e. the current window closes at or after {@code until}). Prep feasibility is checked by the
+     * application layer passing {@code until = at + prepEstimate}.
+     */
+    public boolean isOpenThrough(LocalDateTime at, LocalDateTime until) {
+        if (status != RestaurantStatus.ACTIVE) return false;
+        if (openingHours == null || openingHours.isBlank()) return false;
+        return OpeningHours.tryParse(openingHours)
+                .map(o -> o.isOpenAt(at)
+                        && o.closingAt(at).map(c -> !until.isAfter(c)).orElse(false))
+                .orElse(false);
     }
 
 

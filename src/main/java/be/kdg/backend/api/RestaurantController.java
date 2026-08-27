@@ -2,16 +2,13 @@ package be.kdg.backend.api;
 
 import be.kdg.backend.api.dto.*;
 import be.kdg.backend.application.DishService;
+import be.kdg.backend.application.MenuItemValidation;
 import be.kdg.backend.application.RestaurantService;
-import be.kdg.backend.domain.NotFoundException;
-import be.kdg.backend.domain.dish.Dish;
 import be.kdg.backend.domain.dish.DishId;
-import be.kdg.backend.domain.dish.DishStatus;
 import be.kdg.backend.domain.restaurant.Restaurant;
 import be.kdg.backend.domain.restaurant.RestaurantId;
 import be.kdg.backend.domain.restaurant.RestaurantStatus;
 import be.kdg.backend.domain.restaurant.RestaurantType;
-import be.kdg.backend.infrastructure.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -22,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -138,10 +136,15 @@ public class RestaurantController {
         final RestaurantId restaurantId = new RestaurantId(id);
         final Restaurant restaurant = restaurantService.getRestaurantById(restaurantId);
 
-        boolean isOpen = restaurant.getStatus() == RestaurantStatus.ACTIVE; // Vereenvoudigd
-        String statusMessage = isOpen ? "Restaurant is open" : "Restaurant is closed";
+        LocalDateTime now = LocalDateTime.now();
+        boolean openNow = restaurant.isOpenOn(now);
+        LocalDateTime closingTime = restaurant.closingAt(now).orElse(null);
+        LocalDateTime nextOpening = openNow ? null : restaurant.nextOpeningAfter(now).orElse(null);
+        boolean isOpen = restaurant.getStatus() == RestaurantStatus.ACTIVE;
+        String statusMessage = openNow ? "Restaurant is open" : "Restaurant is closed";
 
-        return ResponseEntity.ok(new RestaurantStatusResponse(isOpen, restaurant.getStatus().name(), statusMessage));
+        return ResponseEntity.ok(new RestaurantStatusResponse(
+                isOpen, restaurant.getStatus().name(), statusMessage, openNow, closingTime, nextOpening));
     }
 
     @PostMapping("/{restaurantId}/menu/{menuItemId}/validate")
@@ -150,41 +153,11 @@ public class RestaurantController {
             @PathVariable final UUID menuItemId,
             @RequestBody @Valid MenuItemValidationRequest request) {
 
-        final RestaurantId restId = new RestaurantId(restaurantId);
-        final DishId dishId = new DishId(menuItemId);
+        MenuItemValidation result = dishService.validateMenuItem(
+                new RestaurantId(restaurantId), new DishId(menuItemId), request.expectedPrice());
 
-        try {
-            Dish dish = dishService.getDishById(dishId);
-            Restaurant restaurant = restaurantService.getRestaurantById(restId);
-
-            // Valideer beschikbaarheid
-            if (dish.getStatus() != DishStatus.PUBLISHED) {
-                return ResponseEntity.ok(new MenuItemValidationResponse(
-                        false, "Dish is not available", null, null, false
-                ));
-            }
-
-            // Valideer prijs (binnen tolerantie)
-            double currentPrice = dish.getPrice().amount().doubleValue();
-            double expectedPrice = request.expectedPrice();
-            double priceTolerance = 0.01; // 1 cent tolerantie
-
-            boolean priceValid = Math.abs(currentPrice - expectedPrice) <= priceTolerance;
-            String message = priceValid ? "Validation successful" :
-                    String.format("Price mismatch. Current: %.2f, Expected: %.2f", currentPrice, expectedPrice);
-
-            return ResponseEntity.ok(new MenuItemValidationResponse(
-                    priceValid && dish.getStatus() == DishStatus.PUBLISHED,
-                    message,
-                    currentPrice,
-                    "EUR", // Aanname
-                    dish.getStatus() == DishStatus.PUBLISHED
-            ));
-
-        } catch (NotFoundException e) {
-            return ResponseEntity.ok(new MenuItemValidationResponse(
-                    false, "Menu item not found", null, null, false
-            ));
-        }
+        return ResponseEntity.ok(new MenuItemValidationResponse(
+                result.isValid(), result.message(), result.currentPrice(),
+                result.currentCurrency(), result.isAvailable()));
     }
 }

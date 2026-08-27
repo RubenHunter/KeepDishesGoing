@@ -3,6 +3,7 @@ plugins {
 	id 'org.springframework.boot' version '3.5.6'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'org.asciidoctor.jvm.convert' version '3.3.2'
+	id 'jacoco'
 }
 
 group = 'be.kdg'
@@ -62,6 +63,18 @@ dependencies {
 tasks.named('test') {
 	outputs.dir snippetsDir
 	useJUnitPlatform()
+	finalizedBy tasks.jacocoTestReport
+}
+
+tasks.jacocoTestReport {
+	dependsOn tasks.test
+	reports {
+		xml.required = true
+		html.required = true
+	}
+	// src/main/java contains volatile docker/mysql data dirs (idp_mysql_data, rabbitmq data) that
+	// Gradle cannot snapshot — disable state tracking so the report task doesn't hash them.
+	doNotTrackState("source tree contains volatile docker data directories")
 }
 
 tasks.named('asciidoctor') {

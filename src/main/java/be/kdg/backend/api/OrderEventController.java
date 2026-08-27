@@ -1,5 +1,6 @@
 package be.kdg.backend.api;
 
+import be.kdg.backend.application.OrderAcceptanceService;
 import be.kdg.backend.application.messaging.InboundEvents;
 import be.kdg.backend.application.messaging.OutboundEventPublisher;
 import be.kdg.backend.application.messaging.PendingOrderStore;
@@ -18,7 +19,8 @@ import java.util.UUID;
  * Manual order event endpoints — lets the restaurant owner (or tester) trigger
  * order.accepted, order.rejected, order.ready_for_pickup events via HTTP.
  *
- * These publish AMQP events to the kdg.events exchange.
+ * These publish AMQP events to the kdg.events exchange. Accept is guarded by
+ * US11 (open now) + US14 (prep feasible before closing) via {@link OrderAcceptanceService}.
  */
 @RestController
 @RequestMapping("/api/restaurants/{restaurantId}/orders")
@@ -29,12 +31,15 @@ public class OrderEventController {
     private final OutboundEventPublisher outboundEventPublisher;
     private final IRestaurantRepository restaurantRepository;
     private final PendingOrderStore pendingOrderStore;
+    private final OrderAcceptanceService orderAcceptanceService;
 
     @PostMapping("/{orderId}/accept")
     public ResponseEntity<Void> acceptOrder(
             @PathVariable UUID restaurantId,
             @PathVariable UUID orderId,
             @RequestBody(required = false) Map<String, String> body) {
+
+        orderAcceptanceService.verifyCanAccept(restaurantId, LocalDateTime.now());
 
         String pickupAddress = resolvePickupAddress(restaurantId, body);
         String deliveryAddress = resolveDeliveryAddress(orderId, body);

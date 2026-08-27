@@ -1,7 +1,7 @@
 package be.kdg.backend.api;
 
 import be.kdg.backend.TestHelper;
-import be.kdg.backend.application.ScheduledPublishProcessor;
+import be.kdg.backend.application.ScheduledPublishJobRunner;
 import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishEntity;
 import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -39,7 +39,7 @@ class DishControllerIntegrationTest {
     private JpaScheduledPublishRepository scheduledRepo;
 
     @Autowired
-    private ScheduledPublishProcessor scheduledProcessor;
+    private ScheduledPublishJobRunner jobRunner;
 
     private RequestPostProcessor ownerJwt(String sub) {
         return SecurityMockMvcRequestPostProcessors.jwt()
@@ -170,7 +170,7 @@ class DishControllerIntegrationTest {
                 .andExpect(status().isNoContent());
 
         JpaScheduledPublishEntity job = scheduledRepo.findAll().getFirst();
-        scheduledProcessor.processJob(job.getId());
+        jobRunner.run(job.getId());
 
         mockMvc.perform(get("/api/restaurants/{id}/menu", rid).with(ownerJwt(sub)))
                 .andExpect(status().isOk())

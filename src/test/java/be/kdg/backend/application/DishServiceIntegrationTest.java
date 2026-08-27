@@ -18,10 +18,10 @@ import be.kdg.backend.domain.scheduling.ScheduledPublishJob;
 import be.kdg.backend.infrastructure.EntityNotFoundException;
 import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishEntity;
 import be.kdg.backend.infrastructure.jpa.JpaScheduledPublishRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -42,8 +42,12 @@ class DishServiceIntegrationTest {
     @Mock
     private IScheduledPublishRepository scheduledRepo;
 
-    @InjectMocks
     private DishService sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = new DishService(restaurantRepository, scheduledRepo, 0.01);
+    }
 
     private static Price eur(String amount) {
         return new Price(new BigDecimal(amount), "EUR");
@@ -62,7 +66,8 @@ class DishServiceIntegrationTest {
                 new DishName("Pasta"),
                 new Description("Fresh"),
                 eur("9.50"),
-                DishCategory.MAIN_COURSE
+                DishCategory.MAIN_COURSE,
+                null
         );
 
         // Assert
@@ -81,7 +86,7 @@ class DishServiceIntegrationTest {
         // Act
         // Assert
         assertThrows(NotFoundException.class, () ->
-                sut.createDraftDish(rid, new DishName("Soup"), new Description("Tomato"), eur("4.00"), DishCategory.APPETIZER));
+                sut.createDraftDish(rid, new DishName("Soup"), new Description("Tomato"), eur("4.00"), DishCategory.APPETIZER, null));
     }
 
     @Test
@@ -89,8 +94,8 @@ class DishServiceIntegrationTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
-        r.createDraftDish(new DishName("Salad"), new Description("Green"), DishCategory.APPETIZER, eur("5.00"));
-        r.createDraftDish(new DishName("Burger"), new Description("Beef"), DishCategory.MAIN_COURSE, eur("12.00"));
+        r.createDraftDish(new DishName("Salad"), new Description("Green"), DishCategory.APPETIZER, eur("5.00"), null);
+        r.createDraftDish(new DishName("Burger"), new Description("Beef"), DishCategory.MAIN_COURSE, eur("12.00"), null);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
 
         // Act
@@ -104,7 +109,7 @@ class DishServiceIntegrationTest {
     void shouldGetDishByIdViaLookup() {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
-        DishId id = r.createDraftDish(new DishName("Tea"), new Description("Hot"), DishCategory.BEVERAGE, eur("2.50"));
+        DishId id = r.createDraftDish(new DishName("Tea"), new Description("Hot"), DishCategory.BEVERAGE, eur("2.50"), null);
         given(restaurantRepository.findByDishId(id)).willReturn(Optional.of(r));
 
         // Act
@@ -120,9 +125,9 @@ class DishServiceIntegrationTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
-        DishId id = r.createDraftDish(new DishName("Taco"), new Description("Beef"), DishCategory.MAIN_COURSE, eur("5.00"));
+        DishId id = r.createDraftDish(new DishName("Taco"), new Description("Beef"), DishCategory.MAIN_COURSE, eur("5.00"), null);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
-        UpdateDishDto dto = new UpdateDishDto("Taco", "Spicy beef", eur("6.00"), DishCategory.MAIN_COURSE);
+        UpdateDishDto dto = new UpdateDishDto("Taco", "Spicy beef", eur("6.00"), DishCategory.MAIN_COURSE, null);
 
         // Act
         DishDto updated = sut.updateDraftDish(rid, id, dto);
@@ -139,10 +144,10 @@ class DishServiceIntegrationTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
-        DishId publishedId = r.createDraftDish(new DishName("Pizza"), new Description("Margarita"), DishCategory.MAIN_COURSE, eur("8.00"));
+        DishId publishedId = r.createDraftDish(new DishName("Pizza"), new Description("Margarita"), DishCategory.MAIN_COURSE, eur("8.00"), null);
         r.publishDish(publishedId);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
-        UpdateDishDto dto = new UpdateDishDto("Pizza", "Margarita XL", eur("9.50"), DishCategory.MAIN_COURSE);
+        UpdateDishDto dto = new UpdateDishDto("Pizza", "Margarita XL", eur("9.50"), DishCategory.MAIN_COURSE, null);
 
         // Act
         DishDto draftDto = sut.updateDraftDish(rid, publishedId, dto);
@@ -160,9 +165,9 @@ class DishServiceIntegrationTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
-        DishId oldId = r.createDraftDish(new DishName("Pizza"), new Description("Old"), DishCategory.MAIN_COURSE, eur("8.00"));
+        DishId oldId = r.createDraftDish(new DishName("Pizza"), new Description("Old"), DishCategory.MAIN_COURSE, eur("8.00"), null);
         r.publishDish(oldId);
-        DishId newDraftId = r.createDraftDish(new DishName("Pizza"), new Description("New"), DishCategory.MAIN_COURSE, eur("9.00"));
+        DishId newDraftId = r.createDraftDish(new DishName("Pizza"), new Description("New"), DishCategory.MAIN_COURSE, eur("9.00"), null);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
 
         // Act
@@ -179,7 +184,7 @@ class DishServiceIntegrationTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
-        DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, eur("4.00"));
+        DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, eur("4.00"), null);
         r.publishDish(id);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
 
@@ -196,7 +201,7 @@ class DishServiceIntegrationTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
-        DishId id = r.createDraftDish(new DishName("Tea"), new Description("Hot"), DishCategory.BEVERAGE, eur("2.00"));
+        DishId id = r.createDraftDish(new DishName("Tea"), new Description("Hot"), DishCategory.BEVERAGE, eur("2.00"), null);
         r.publishDish(id);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
 
@@ -213,8 +218,8 @@ class DishServiceIntegrationTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
-        r.createDraftDish(new DishName("DishA"), new Description(""), DishCategory.MAIN_COURSE, eur("3.00"));
-        r.createDraftDish(new DishName("DishB"), new Description(""), DishCategory.MAIN_COURSE, eur("4.00"));
+        r.createDraftDish(new DishName("DishA"), new Description(""), DishCategory.MAIN_COURSE, eur("3.00"), null);
+        r.createDraftDish(new DishName("DishB"), new Description(""), DishCategory.MAIN_COURSE, eur("4.00"), null);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
 
         // Act

@@ -79,7 +79,7 @@ class RestaurantTest {
         DishId id = r.createDraftDish(new DishName("Burger"), new Description("Beef"), DishCategory.MAIN_COURSE, eur("12.00"), null);
 
         // Act
-        DishId result = r.updateDraftDish(id, "Burger", "Beef+Cheese", eur("13.00"), DishCategory.MAIN_COURSE);
+        DishId result = r.updateDraftDish(id, "Burger", "Beef+Cheese", eur("13.00"), DishCategory.MAIN_COURSE, null);
 
         // Assert
         assertEquals(id, result);
@@ -97,7 +97,7 @@ class RestaurantTest {
         r.publishDish(pubId);
 
         // Act
-        DishId draftId = r.updateDraftDish(pubId, "Pizza", "Margarita XL", eur("9.50"), DishCategory.MAIN_COURSE);
+        DishId draftId = r.updateDraftDish(pubId, "Pizza", "Margarita XL", eur("9.50"), DishCategory.MAIN_COURSE, null);
 
         // Assert
         assertNotEquals(pubId, draftId);
@@ -119,7 +119,7 @@ class RestaurantTest {
         DishId existingDraft = r.createDraftDish(name, new Description("Scratch"), DishCategory.MAIN_COURSE, eur("11.00"), null);
 
         // Act
-        DishId result = r.updateDraftDish(pubId, "Sushi", "Classic XL", eur("12.00"), DishCategory.MAIN_COURSE);
+        DishId result = r.updateDraftDish(pubId, "Sushi", "Classic XL", eur("12.00"), DishCategory.MAIN_COURSE, null);
 
         // Assert
         assertEquals(existingDraft, result);
@@ -204,7 +204,7 @@ class RestaurantTest {
 
         // Act + Assert
         assertThrows(IllegalArgumentException.class, () ->
-                r.updateDraftDish(id, "Coffee", "Hot", eur("2.50"), DishCategory.BEVERAGE));
+                r.updateDraftDish(id, "Coffee", "Hot", eur("2.50"), DishCategory.BEVERAGE, null));
     }
 
     @Test

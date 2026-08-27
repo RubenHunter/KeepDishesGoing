@@ -28,9 +28,9 @@ public class OwnerGuard {
         }
 
         Optional<UUID> ownerOpt = restaurantRepository.getOwnerId(new RestaurantId(restaurantId));
-        // If no owner assigned (seeded by tests), allow any authenticated owner.
+        // Deny by default — a restaurant with no assigned owner cannot be managed by anyone (exam-grade authz).
         if (ownerOpt.isEmpty()) {
-            return true;
+            return false;
         }
 
         try {

@@ -22,17 +22,6 @@ public class RestaurantService {
         return restaurantRepository.getAll();
     }
 
-    // Service does not depend on DTOs
-    public RestaurantId createRestaurant(final String name) {
-        return createRestaurant(
-                name,
-                "Test Street 1, 1000 TestCity, BE",
-                "test@example.com",
-                "Mon-Sun 00:00-23:59",
-                "https://example.com/logo.png",
-                UUID.randomUUID()
-        );
-    }
     // Overload voor createRestaurant met ownerId
     public RestaurantId createRestaurant(final String name, UUID ownerId) { // new
         Restaurant restaurant = Restaurant.create(name, ownerId);

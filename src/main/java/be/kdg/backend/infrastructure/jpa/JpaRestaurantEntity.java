@@ -70,23 +70,6 @@ public class JpaRestaurantEntity {
 
 
 
-    /*
-    public static JpaRestaurantEntity fromDomain(Restaurant restaurant){
-        JpaRestaurantEntity jpaRestaurantEntity = new JpaRestaurantEntity(
-                restaurant.getId().id(),
-                restaurant.getName().name(),
-                restaurant.getStatus()
-
-        );
-
-        List<JpaDishEntity> jpaDishEntities = restaurant.getDishes().stream()
-                .map(dish -> JpaDishEntity.fromDomain(dish, restaurant.getId().id()))
-                .toList();
-
-        jpaRestaurantEntity.dishes.addAll(jpaDishEntities);
-
-        return jpaRestaurantEntity;
-    }*/
     public static JpaRestaurantEntity fromDomain(Restaurant r) {
         JpaRestaurantEntity e = new JpaRestaurantEntity();
         e.id = r.getId().id();
