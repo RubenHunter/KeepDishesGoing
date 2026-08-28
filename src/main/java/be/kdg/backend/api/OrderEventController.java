@@ -70,33 +70,11 @@ public class OrderEventController {
         log.info("Manual accept order {} pickup={} delivery={}", orderId, pickupAddress, deliveryAddress);
     }
 
-    // REST-BEFORE-REVIEW-2: delete alias once frontend uses PATCH /status {REJECTED}
-    @Deprecated
-    @PostMapping("/{orderId}/reject")
-    public ResponseEntity<Void> rejectOrder(
-            @PathVariable UUID restaurantId,
-            @PathVariable UUID orderId,
-            @RequestBody(required = false) Map<String, String> body) {
-        rejectInternal(orderId,
-                (body != null) ? body.getOrDefault("reason", "Restaurant rejected order") : "Restaurant rejected order");
-        return ResponseEntity.noContent().build();
-    }
-
     private void rejectInternal(UUID orderId, String reason) {
         var event = new InboundEvents.OrderRejectedEvent(orderId, reason, LocalDateTime.now());
         outboundEventPublisher.publishOrderRejected(event);
         pendingOrderStore.remove(orderId.toString());
         log.info("Manual reject order {} — published OrderRejected", orderId);
-    }
-
-    // REST-BEFORE-REVIEW-2: delete alias once frontend uses PATCH /status {READY_FOR_PICKUP}
-    @Deprecated
-    @PostMapping("/{orderId}/ready")
-    public ResponseEntity<Void> markReady(
-            @PathVariable UUID restaurantId,
-            @PathVariable UUID orderId) {
-        readyInternal(orderId, restaurantId);
-        return ResponseEntity.noContent().build();
     }
 
     private void readyInternal(UUID orderId, UUID restaurantId) {

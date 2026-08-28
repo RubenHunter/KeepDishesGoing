@@ -3,7 +3,8 @@ package be.kdg.backend.domain.restaurant;
 import be.kdg.backend.domain.DomainConflictException;
 import be.kdg.backend.domain.Price;
 import be.kdg.backend.domain.dish.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.ToString;
 import org.jmolecules.ddd.annotation.AggregateRoot;
 import org.jmolecules.ddd.annotation.Identity;
 
@@ -14,7 +15,6 @@ import java.util.UUID;
 import java.time.LocalDateTime;
 
 @Getter
-@AllArgsConstructor
 @ToString
 @AggregateRoot
 public class Restaurant {
@@ -47,6 +47,22 @@ public class Restaurant {
         this.logoUrl = null;
     }
 
+    /** Full rehydrate / factory constructor (replaces the removed Lombok @AllArgsConstructor). */
+    public Restaurant(RestaurantId id, RestaurantName name, RestaurantStatus status, List<Dish> dishes,
+                      UUID ownerId, String fullAddress, String email, String openingHours,
+                      String logoUrl, RestaurantType restaurantType) {
+        this.id = id;
+        this.name = name;
+        this.status = status;
+        this.dishes = dishes;
+        this.ownerId = ownerId;
+        this.fullAddress = fullAddress;
+        this.email = email;
+        this.openingHours = openingHours;
+        this.logoUrl = logoUrl;
+        this.restaurantType = restaurantType;
+    }
+
     // Domain policy interface (no infra dependency)
     @FunctionalInterface
     public interface OwnerRestaurantUniquenessPolicy {
@@ -66,12 +82,6 @@ public class Restaurant {
                 null,
                 null, null, null, null, null
         );
-    }
-
-    public static Restaurant create(String name, UUID ownerId) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("Restaurant name must not be blank");
-        if (ownerId == null) throw new IllegalArgumentException("ownerId must not be null");
-        return new Restaurant(RestaurantId.create(), new RestaurantName(name), RestaurantStatus.INACTIVE, new ArrayList<>(), ownerId, null, null, null, null, null);
     }
 
     // US3: full required data on create
@@ -271,8 +281,8 @@ public class Restaurant {
     }
 
     // Publish a dish and delete any other published version with the same name
-    // US10: publish with cap of 10 published dishes; allow replacement by name
-    public void publishDish(DishId dishId) {
+    // US10: publish with a configurable cap of published dishes; allow replacement by name
+    public void publishDish(DishId dishId, int maxPublishedDishes) {
         Dish toPublish = findDishById(dishId);
         if (toPublish.getStatus() == DishStatus.PUBLISHED) {
             throw new DomainConflictException("Dish is already published");
@@ -282,8 +292,8 @@ public class Restaurant {
                 .anyMatch(other -> other.getStatus() == DishStatus.PUBLISHED && other.getName().equals(toPublish.getName()));
 
         long publishedCount = dishes.stream().filter(d -> d.getStatus() == DishStatus.PUBLISHED).count();
-        if (!replacing && publishedCount >= 10) {
-            throw new DomainConflictException("Maximum of 10 dishes can be published");
+        if (!replacing && publishedCount >= maxPublishedDishes) {
+            throw new DomainConflictException("Maximum of " + maxPublishedDishes + " dishes can be published");
         }
 
         // Replace any published version with the same name
@@ -328,7 +338,7 @@ public class Restaurant {
     }
 
     // US10 + domain-level bulk publish (no looping in service)
-    public void publishAllDraftDishes() {
+    public void publishAllDraftDishes(int maxPublishedDishes) {
         long publishedCount = dishes.stream().filter(d -> d.getStatus() == DishStatus.PUBLISHED).count();
 
         // Publish drafts in-place while respecting cap and allowing replacements
@@ -338,7 +348,7 @@ public class Restaurant {
             boolean replacing = dishes.stream()
                     .anyMatch(other -> other.getStatus() == DishStatus.PUBLISHED && other.getName().equals(draft.getName()));
 
-            if (!replacing && publishedCount >= 10) {
+            if (!replacing && publishedCount >= maxPublishedDishes) {
                 // skip this draft; cap reached and no replacement
                 continue;
             }

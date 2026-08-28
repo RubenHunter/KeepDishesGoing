@@ -27,7 +27,14 @@ public class TestHelper {
     private JpaScheduledPublishRepository jpaScheduledPublishRepository;
 
     public Restaurant createRestaurant(String name) {
-        RestaurantId id = restaurantService.createRestaurant(name, UUID.randomUUID());
+        RestaurantId id = restaurantService.createRestaurant(
+                name,
+                name + " 1, 2000 Antwerpen, België",
+                "owner-" + name + "@example.com",
+                "Mon-Sun 09:00-22:00",
+                "https://example.com/logo.png",
+                UUID.randomUUID()
+        );
         return restaurantService.getRestaurantById(id);
     }
 

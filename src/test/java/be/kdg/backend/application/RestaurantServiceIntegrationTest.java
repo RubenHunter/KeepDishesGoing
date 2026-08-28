@@ -35,7 +35,9 @@ class RestaurantServiceIntegrationTest {
         ArgumentCaptor<Restaurant> captor = ArgumentCaptor.forClass(Restaurant.class);
 
         // Act
-        RestaurantId created = sut.createRestaurant("New Resto", java.util.UUID.randomUUID());
+        RestaurantId created = sut.createRestaurant("New Resto", "Teststraat 1, 2000 Antwerpen, België",
+                "resto@example.com", "Mon-Sun 09:00-22:00", "https://example.com/logo.png",
+                java.util.UUID.randomUUID());
 
         // Assert
         verify(restaurantRepository, times(1)).save(captor.capture());

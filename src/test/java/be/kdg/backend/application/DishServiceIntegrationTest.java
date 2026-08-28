@@ -46,7 +46,7 @@ class DishServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        sut = new DishService(restaurantRepository, scheduledRepo, 0.01);
+        sut = new DishService(restaurantRepository, scheduledRepo, 0.01, 10);
     }
 
     private static Price eur(String amount) {
@@ -145,7 +145,7 @@ class DishServiceIntegrationTest {
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
         DishId publishedId = r.createDraftDish(new DishName("Pizza"), new Description("Margarita"), DishCategory.MAIN_COURSE, eur("8.00"), null);
-        r.publishDish(publishedId);
+        r.publishDish(publishedId, 10);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
         UpdateDishDto dto = new UpdateDishDto("Pizza", "Margarita XL", eur("9.50"), DishCategory.MAIN_COURSE, null);
 
@@ -166,7 +166,7 @@ class DishServiceIntegrationTest {
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
         DishId oldId = r.createDraftDish(new DishName("Pizza"), new Description("Old"), DishCategory.MAIN_COURSE, eur("8.00"), null);
-        r.publishDish(oldId);
+        r.publishDish(oldId, 10);
         DishId newDraftId = r.createDraftDish(new DishName("Pizza"), new Description("New"), DishCategory.MAIN_COURSE, eur("9.00"), null);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
 
@@ -185,7 +185,7 @@ class DishServiceIntegrationTest {
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
         DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, eur("4.00"), null);
-        r.publishDish(id);
+        r.publishDish(id, 10);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
 
         // Act
@@ -202,7 +202,7 @@ class DishServiceIntegrationTest {
         Restaurant r = Restaurant.create("Resto");
         RestaurantId rid = r.getId();
         DishId id = r.createDraftDish(new DishName("Tea"), new Description("Hot"), DishCategory.BEVERAGE, eur("2.00"), null);
-        r.publishDish(id);
+        r.publishDish(id, 10);
         given(restaurantRepository.getById(rid)).willReturn(Optional.of(r));
 
         // Act

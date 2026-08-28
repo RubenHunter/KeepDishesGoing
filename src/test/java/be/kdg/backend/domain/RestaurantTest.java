@@ -94,7 +94,7 @@ class RestaurantTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         DishId pubId = r.createDraftDish(new DishName("Pizza"), new Description("Margarita"), DishCategory.MAIN_COURSE, eur("8.00"), null);
-        r.publishDish(pubId);
+        r.publishDish(pubId, 10);
 
         // Act
         DishId draftId = r.updateDraftDish(pubId, "Pizza", "Margarita XL", eur("9.50"), DishCategory.MAIN_COURSE, null);
@@ -115,7 +115,7 @@ class RestaurantTest {
         Restaurant r = Restaurant.create("Resto");
         DishName name = new DishName("Sushi");
         DishId pubId = r.createDraftDish(name, new Description("Classic"), DishCategory.MAIN_COURSE, eur("10.00"), null);
-        r.publishDish(pubId);
+        r.publishDish(pubId, 10);
         DishId existingDraft = r.createDraftDish(name, new Description("Scratch"), DishCategory.MAIN_COURSE, eur("11.00"), null);
 
         // Act
@@ -135,11 +135,11 @@ class RestaurantTest {
         Restaurant r = Restaurant.create("Resto");
         DishName name = new DishName("Pizza");
         DishId oldId = r.createDraftDish(name, new Description("Old"), DishCategory.MAIN_COURSE, eur("7.00"), null);
-        r.publishDish(oldId);
+        r.publishDish(oldId, 10);
         DishId newId = r.createDraftDish(name, new Description("New"), DishCategory.MAIN_COURSE, eur("8.00"), null);
 
         // Act
-        r.publishDish(newId);
+        r.publishDish(newId, 10);
 
         // Assert
         List<Dish> menu = r.getPublishedMenu();
@@ -157,7 +157,7 @@ class RestaurantTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, new Price(new BigDecimal("4.00"), "EUR"), null);
-        r.publishDish(id);
+        r.publishDish(id, 10);
 
         // Act
         r.dePublishDish(id);
@@ -171,7 +171,7 @@ class RestaurantTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         DishId id = r.createDraftDish(new DishName("Soup"), new Description("Tomato"), DishCategory.APPETIZER, new Price(new BigDecimal("4.00"), "EUR"), null);
-        r.publishDish(id);
+        r.publishDish(id, 10);
 
         // Act
         r.markDishOutOfStock(id);
@@ -186,7 +186,7 @@ class RestaurantTest {
         Restaurant r = Restaurant.create("Resto");
         DishId d1 = r.createDraftDish(new DishName("DishA"), new Description(""), DishCategory.MAIN_COURSE, eur("5.00"), null);
         DishId d2 = r.createDraftDish(new DishName("DishB"), new Description(""), DishCategory.MAIN_COURSE, eur("6.00"), null);
-        r.publishDish(d2);
+        r.publishDish(d2, 10);
 
         // Act
         List<Dish> menu = r.getPublishedMenu();
@@ -212,9 +212,9 @@ class RestaurantTest {
         // Arrange
         Restaurant r = Restaurant.create("Resto");
         DishId id = r.createDraftDish(new DishName("Tea"), new Description("Hot"), DishCategory.BEVERAGE, eur("2.00"), null);
-        r.publishDish(id);
+        r.publishDish(id, 10);
 
         // Act + Assert
-        assertThrows(DomainConflictException.class, () -> r.publishDish(id));
+        assertThrows(DomainConflictException.class, () -> r.publishDish(id, 10));
     }
 }

@@ -22,13 +22,6 @@ public class RestaurantService {
         return restaurantRepository.getAll();
     }
 
-    // Overload voor createRestaurant met ownerId
-    public RestaurantId createRestaurant(final String name, UUID ownerId) { // new
-        Restaurant restaurant = Restaurant.create(name, ownerId);
-        restaurantRepository.save(restaurant);
-        return restaurant.getId();
-    }
-
     // US3 + US1: domain enforces invariant; service provides policy only
     public RestaurantId createRestaurant(final String name,
                                          final String fullAddress,

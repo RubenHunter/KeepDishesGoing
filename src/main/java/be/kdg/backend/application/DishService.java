@@ -24,13 +24,16 @@ public class DishService {
     private final IRestaurantRepository restaurantRepository;
     private final IScheduledPublishRepository scheduledRepo;
     private final double priceTolerance;
+    private final int maxPublishedDishes;
 
     public DishService(IRestaurantRepository restaurantRepository,
                        IScheduledPublishRepository scheduledRepo,
-                       @Value("${kdg.validation.price-tolerance:0.01}") double priceTolerance) {
+                       @Value("${kdg.validation.price-tolerance:0.01}") double priceTolerance,
+                       @Value("${kdg.restaurant.max-published-dishes:10}") int maxPublishedDishes) {
         this.restaurantRepository = restaurantRepository;
         this.scheduledRepo = scheduledRepo;
         this.priceTolerance = priceTolerance;
+        this.maxPublishedDishes = maxPublishedDishes;
     }
 
     // Create a draft dish inside the Restaurant aggregate
@@ -114,7 +117,7 @@ public class DishService {
         Restaurant restaurant = restaurantRepository.getById(restaurantId)
                 .orElseThrow(restaurantId::notFound);
 
-        restaurant.publishDish(dishId);
+        restaurant.publishDish(dishId, maxPublishedDishes);
         restaurantRepository.save(restaurant);
     }
 
@@ -131,7 +134,7 @@ public class DishService {
                 .orElseThrow(restaurantId::notFound);
 
         if (available) {
-            restaurant.publishDish(dishId);
+            restaurant.publishDish(dishId, maxPublishedDishes);
         } else {
             restaurant.markDishOutOfStock(dishId);
         }
@@ -145,7 +148,7 @@ public class DishService {
                 .orElseThrow(restaurantId::notFound);
 
         // Move loop into the aggregate
-        restaurant.publishAllDraftDishes();
+        restaurant.publishAllDraftDishes(maxPublishedDishes);
 
         restaurantRepository.save(restaurant);
     }
