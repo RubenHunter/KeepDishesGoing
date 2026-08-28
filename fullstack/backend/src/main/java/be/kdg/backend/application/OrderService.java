@@ -113,11 +113,15 @@ public class OrderService {
         );
     }
 
-    /** Called by payment webhook (or dev stub endpoint). */
+    /** Called by payment webhook (or dev stub endpoint). Idempotent — webhook redelivery is a no-op. */
     public void confirmPayment(String paymentRef) {
         log.info("confirmPayment paymentRef={}", paymentRef);
-        var confirmation = paymentGateway.confirm(paymentRef);
         Order order = findByPaymentRef(paymentRef);
+        if (order.isPaid() || order.isPlaced()) {
+            log.info("Order {} already paid/placed — ignoring webhook redelivery", order.id());
+            return;
+        }
+        var confirmation = paymentGateway.confirm(paymentRef);
         order.assignPayment(
                 paymentRef,
                 confirmation.status() == PaymentGateway.PaymentConfirmation.PaymentStatus.PAID

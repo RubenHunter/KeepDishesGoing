@@ -35,6 +35,10 @@ export function tokenEndpoint(): string {
 export const TRACKING_POLL_MS = 5000;
 export const ORDER_DECISION_WINDOW_MIN = 5;
 
+/** US20 - Stripe webhook may lag the browser redirect; poll the order until PAID before placing. */
+export const PAYMENT_POLL_MS = 2000;
+export const PAYMENT_POLL_MAX_ATTEMPTS = 20;
+
 /** US36 - payout policy (base + per-minute, min/max billed minutes). */
 export const PAYOUT_POLICY = {
 	baseFee: 3.0,

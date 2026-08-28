@@ -135,4 +135,54 @@ Authorization: Bearer {{accessToken}}
 GET {{baseUrl}}/api/orders/restaurant/{{restaurantId}}
 Authorization: Bearer {{ownerToken}}
 
+### ============================================================================
+### STRIPE (test mode) — kdg.payment.provider=stripe
+### ============================================================================
+### The Stripe-Signature header is a time-signed HMAC over the raw payload — it can't be
+### precomputed in a static file. Use the Stripe CLI to forward real webhooks instead:
+###   stripe listen --forward-to localhost:8081/api/payments/webhook
+###   stripe trigger checkout.session.completed
+### The listener prints a whsec_… — set it as STRIPE_WEBHOOK_SECRET so it matches the backend.
+
+### 6s. Checkout with the Stripe provider returns a hosted redirectUrl (paymentRef = session id)
+# @name stripeCheckout
+POST {{baseUrl}}/api/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "cartId":       "{{cartId}}",
+  "customerName": "Ruben",
+  "street":       "Langestraat",
+  "number":       "12",
+  "postalCode":   "2000",
+  "city":         "Antwerpen",
+  "country":      "BE",
+  "email":        "ruben@example.com"
+}
+
+> {%
+    client.global.set("stripeSessionId", response.body.paymentRef);
+    client.log("redirectUrl = " + response.body.redirectUrl);
+    client.log("stripeSessionId = " + response.body.paymentRef);
+%}
+
+### 7s. Stripe webhook — checkout.session.completed (sent by `stripe listen`, signature verified)
+POST {{baseUrl}}/api/payments/webhook
+Content-Type: application/json
+Stripe-Signature: {{stripeWebhookSignature}}
+
+{
+  "id": "evt_00000000000000",
+  "type": "checkout.session.completed",
+  "data": { "object": { "id": "{{stripeSessionId}}", "payment_status": "paid" } }
+}
+
+### 8s. Place order after Stripe confirmation (same as step 8)
+PATCH {{baseUrl}}/api/orders/{{orderId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "status": "PLACED" }
+
 

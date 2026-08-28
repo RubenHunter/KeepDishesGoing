@@ -149,6 +149,12 @@ export class CheckoutView implements View {
 				cartId: cart.cartId,
 				...form,
 			});
+			// Stripe hosted checkout: hand the browser to the provider. The stub path keeps the
+			// in-app "Pay" step only when no redirect URL came back.
+			if (result.redirectUrl) {
+				window.location.assign(result.redirectUrl);
+				return;
+			}
 			this.paintPayment(root, result.orderId, result.paymentRef, cart.total, form.customerName);
 		} catch (error) {
 			busyButton(btn, false);

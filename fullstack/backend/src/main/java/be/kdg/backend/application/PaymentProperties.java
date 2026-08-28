@@ -8,9 +8,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "kdg.payment")
 public record PaymentProperties(
+        String provider,
         String webhookSecret,
         String webhookSecretHeader,
-        Stub stub
+        Stripe stripe
 ) {
     public PaymentProperties {
         if (webhookSecret == null || webhookSecret.isBlank()) {
@@ -22,8 +23,10 @@ public record PaymentProperties(
     }
 
     /**
-     * Stub provider dev config. {@code redirectTemplate} may contain a {@code {orderId}} placeholder
-     * resolved at runtime; it points the browser at the frontend tracking page after (stub) payment.
+     * Stripe Checkout Session (hosted) provider config. Test-mode keys only; supplied via env vars,
+     * never committed. {@code successUrl} may contain an {@code {orderId}} placeholder resolved at
+     * runtime — Stripe redirects the browser there after a completed session.
      */
-    public record Stub(String redirectTemplate) {}
+    public record Stripe(String secretKey, String webhookSecret,
+                         String successUrl, String cancelUrl) {}
 }

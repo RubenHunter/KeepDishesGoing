@@ -90,7 +90,9 @@ export class OwnerOrdersView implements View {
 	}
 
 	private paint(root: HTMLElement, orders: OrderSummary[], silent: boolean): void {
-		const awaiting = orders.filter((o) => o.status === "PLACED" || o.status === "PENDING");
+		// Only PLACED orders await a decision — PENDING is an unplaced checkout the customer
+		// hasn't committed to yet (and rejecting it would silently no-op in the domain).
+		const awaiting = orders.filter((o) => o.status === "PLACED");
 		const inPrep = orders.filter((o) => o.status === "ACCEPTED");
 		const later = orders.filter((o) =>
 			["READY_FOR_PICKUP", "PICKED_UP", "DELIVERED", "REJECTED", "CANCELLED"].includes(o.status),

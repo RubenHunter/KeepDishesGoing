@@ -40,6 +40,9 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
+	// Stripe payments (US20 test-mode provider; SDK handles session create + webhook signature)
+	implementation("com.stripe:stripe-java:29.2.0")
+
 	// DDD with jMolecules (incl. JPA integration so AR annotations map to JPA)
 	implementation("org.jmolecules:jmolecules-ddd:1.9.0")
 	implementation("org.jmolecules.integrations:jmolecules-starter-ddd:0.29.0")

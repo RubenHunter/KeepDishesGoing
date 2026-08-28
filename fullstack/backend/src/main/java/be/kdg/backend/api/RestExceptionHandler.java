@@ -3,6 +3,7 @@ package be.kdg.backend.api;
 import be.kdg.backend.domain.DomainException;
 import be.kdg.backend.domain.NotFoundException;
 import be.kdg.backend.domain.PaymentSignatureException;
+import be.kdg.backend.domain.StripeSignatureException;
 import be.kdg.backend.domain.ValidationException;
 import be.kdg.backend.domain.order.OrderFrozenException;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,12 @@ public class RestExceptionHandler {
     public ResponseEntity<Map<String, Object>> paymentSignature(PaymentSignatureException ex) {
         log.warn("PaymentSignatureException: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body(HttpStatus.FORBIDDEN, ex.getMessage(), "INVALID_SIGNATURE"));
+    }
+
+    @ExceptionHandler(StripeSignatureException.class)
+    public ResponseEntity<Map<String, Object>> stripeSignature(StripeSignatureException ex) {
+        log.warn("StripeSignatureException: {}", ex.getMessage());
+        return ResponseEntity.badRequest().body(body(HttpStatus.BAD_REQUEST, ex.getMessage(), "INVALID_STRIPE_SIGNATURE"));
     }
 
     @ExceptionHandler(DomainException.class)
