@@ -1,4 +1,4 @@
-import { getPriceCategory, getRestaurantStatus, listRestaurants } from "../../api/restaurantApi.ts";
+import { getOpenNow, getPriceCategory, listRestaurants } from "../../api/restaurantApi.ts";
 import { isOpen } from "../../domain/Restaurant.ts";
 import { emptyState, skeletonCards } from "../../presenter/components.ts";
 import { h, mount } from "../../presenter/dom.ts";
@@ -42,12 +42,12 @@ export class RestaurantListView implements View {
 
 		try {
 			const restaurants = await listRestaurants();
-			// Price category (order-service) + time-based open flag (restaurant-service /status).
+			// Price category (order-service) + time-based open flag (order-service /status proxy).
 			this.cards = await Promise.all(
 				restaurants.map(async (r) => {
 					const [priceCategory, status] = await Promise.all([
 						getPriceCategory(r.id).catch(() => null),
-						getRestaurantStatus(r.id).catch(() => null),
+						getOpenNow(r.id).catch(() => null),
 					]);
 					return { ...r, priceCategory, openNow: status?.openNow ?? isOpen(r) };
 				}),

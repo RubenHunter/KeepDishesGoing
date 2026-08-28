@@ -2,8 +2,8 @@ package be.kdg.backend.infrastructure.http;
 
 import be.kdg.backend.application.RestaurantProperties;
 import be.kdg.backend.application.restaurant.RestaurantGateway;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -19,11 +19,19 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class RestRestaurantGateway implements RestaurantGateway {
 
     private final RestClient restaurantClient;
     private final RestaurantProperties restaurantProperties;
+    private final double priceTolerance;
+
+    public RestRestaurantGateway(RestClient restaurantClient,
+                                 RestaurantProperties restaurantProperties,
+                                 @Value("${kdg.order.price-tolerance:0.01}") double priceTolerance) {
+        this.restaurantClient = restaurantClient;
+        this.restaurantProperties = restaurantProperties;
+        this.priceTolerance = priceTolerance;
+    }
 
     /** US17: validate every selected item against the restaurant-service live menu. */
     @Override
@@ -61,7 +69,7 @@ public class RestRestaurantGateway implements RestaurantGateway {
                         return new MenuValidationResult.ItemValidation(
                                 it.menuItemId(), false, live.price().amount().doubleValue(), "dish not published");
                     }
-                    double tolerance = 0.01;
+                    double tolerance = priceTolerance;
                     double livePrice = live.price().amount().doubleValue();
                     if (Math.abs(livePrice - it.unitPriceExpected()) > tolerance) {
                         return new MenuValidationResult.ItemValidation(

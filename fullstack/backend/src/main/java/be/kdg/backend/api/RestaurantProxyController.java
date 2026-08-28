@@ -35,6 +35,12 @@ public class RestaurantProxyController {
         return ResponseEntity.ok(restaurantGateway.getMenu(id));
     }
 
+    /** US13 — hours-aware open/closed (server-computed by restaurant-service). */
+    @GetMapping("/{id}/status")
+    public ResponseEntity<RestaurantGateway.RestaurantStatusDto> getStatus(@PathVariable UUID id) {
+        return ResponseEntity.ok(restaurantGateway.getStatus(id));
+    }
+
     /** US39 — price category symbol for restaurant type + average menu price. */
     @GetMapping("/{id}/price-category")
     public ResponseEntity<PriceCategoryResponse> priceCategory(@PathVariable UUID id) {

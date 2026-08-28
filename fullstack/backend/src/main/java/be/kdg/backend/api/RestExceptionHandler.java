@@ -6,6 +6,7 @@ import be.kdg.backend.domain.PaymentSignatureException;
 import be.kdg.backend.domain.StripeSignatureException;
 import be.kdg.backend.domain.ValidationException;
 import be.kdg.backend.domain.order.OrderFrozenException;
+import be.kdg.backend.domain.order.OrderOwnershipException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +41,12 @@ public class RestExceptionHandler {
     public ResponseEntity<Map<String, Object>> frozen(OrderFrozenException ex) {
         log.warn("OrderFrozenException: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body(HttpStatus.CONFLICT, ex.getMessage(), "ORDER_FROZEN"));
+    }
+
+    @ExceptionHandler(OrderOwnershipException.class)
+    public ResponseEntity<Map<String, Object>> ownership(OrderOwnershipException ex) {
+        log.warn("OrderOwnershipException: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body(HttpStatus.FORBIDDEN, ex.getMessage(), "NOT_OWNER"));
     }
 
     @ExceptionHandler(PaymentSignatureException.class)

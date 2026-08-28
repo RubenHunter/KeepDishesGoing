@@ -28,7 +28,7 @@ class RestRestaurantGatewayTest {
         server = new MockWebServer();
         RestClient client = RestClient.builder().baseUrl(server.url("/").toString()).build();
         RestaurantProperties props = new RestaurantProperties(server.url("/").toString(), "/api/restaurants");
-        gateway = new RestRestaurantGateway(client, props);
+        gateway = new RestRestaurantGateway(client, props, 0.01);
     }
 
     @AfterEach

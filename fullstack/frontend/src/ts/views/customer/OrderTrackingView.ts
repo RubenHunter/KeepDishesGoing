@@ -203,7 +203,10 @@ export class OrderTrackingView implements View {
 						h("span", { class: "mono" }, money(item.unitPrice * item.quantity)),
 					),
 				);
-				const canCancel = order.status === "PLACED" || order.status === "ACCEPTED";
+				const canCancel =
+					order.status === "PENDING" ||
+					order.status === "PLACED" ||
+					order.status === "ACCEPTED";
 				mount(
 					card,
 					h("h2", { style: "margin-bottom:var(--space-3)" }, "Your order"),

@@ -52,6 +52,22 @@ export function getRestaurantStatus(
 	});
 }
 
+/**
+ * US13 customer-facing open/closed via the order-service proxy (single public entry point).
+ * {@code openNow} is hours-aware and computed server-side by restaurant-service.
+ */
+export function getOpenNow(
+	id: string,
+): Promise<{ openNow: boolean; closingTime: string | null; nextOpening: string | null }> {
+	return request<{ openNow: boolean; closingTime?: string; nextOpening?: string }>(
+		`${proxy}/restaurants/${id}/status`,
+	).then((r) => ({
+		openNow: r.openNow ?? false,
+		closingTime: r.closingTime ?? null,
+		nextOpening: r.nextOpening ?? null,
+	}));
+}
+
 // ---------- Owner (role=owner) ----------
 
 /** US1 - discover the restaurant owned by the current Keycloak subject (404 = none yet). */

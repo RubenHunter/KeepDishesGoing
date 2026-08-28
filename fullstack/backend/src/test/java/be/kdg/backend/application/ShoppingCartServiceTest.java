@@ -35,7 +35,7 @@ class ShoppingCartServiceTest {
 
     @BeforeEach
     void setup() {
-        service = new ShoppingCartService(repo);
+        service = new ShoppingCartService(repo, 50);
     }
 
     @Test
@@ -59,7 +59,7 @@ class ShoppingCartServiceTest {
         when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.addItem(UUID.randomUUID(), UUID.randomUUID(), "Pizza", 2, 10.0, UUID.randomUUID());
-        verify(cart).addItem(any(), eq("Pizza"), any(), any(), any());
+        verify(cart).addItem(any(), eq("Pizza"), any(), any(), any(), eq(50));
         verify(repo).save(cart);
     }
 }

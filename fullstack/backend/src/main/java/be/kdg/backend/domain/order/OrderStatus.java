@@ -27,6 +27,6 @@ public enum OrderStatus {
     }
 
     public boolean canCancelFrom() {
-        return this == PLACED || this == ACCEPTED;
+        return this == PENDING || this == PLACED || this == ACCEPTED;
     }
 }

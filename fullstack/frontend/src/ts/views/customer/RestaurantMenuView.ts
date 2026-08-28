@@ -1,8 +1,8 @@
 import {
 	getMenu,
+	getOpenNow,
 	getPriceCategory,
 	getRestaurantDetail,
-	getRestaurantStatus,
 } from "../../api/restaurantApi.ts";
 import type { Dish, DishCategory } from "../../domain/Dish.ts";
 import { RESTAURANT_TYPE_LABELS, type RestaurantDetail } from "../../domain/Restaurant.ts";
@@ -45,7 +45,7 @@ export class RestaurantMenuView implements View {
 				getRestaurantDetail(restaurantId),
 				getMenu(restaurantId),
 				getPriceCategory(restaurantId).catch(() => null),
-				getRestaurantStatus(restaurantId).catch(() => null),
+				getOpenNow(restaurantId).catch(() => null),
 			]);
 			if (this.destroyed) return;
 			// Open flag: /status openNow is authoritative (time-based, not the manual ACTIVE flag).

@@ -10,8 +10,8 @@ import be.kdg.backend.domain.shared.RestaurantId;
 import be.kdg.backend.domain.shoppingcart.CartId;
 import be.kdg.backend.domain.shoppingcart.ShoppingCart;
 import be.kdg.backend.domain.shoppingcart.ShoppingCartRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,10 +25,16 @@ import java.util.UUID;
 @Slf4j
 @Service
 @Transactional
-@RequiredArgsConstructor
 public class ShoppingCartService {
 
     private final ShoppingCartRepository cartRepository;
+    private final int maxCartItems;
+
+    public ShoppingCartService(ShoppingCartRepository cartRepository,
+                               @Value("${kdg.order.max-cart-items:50}") int maxCartItems) {
+        this.cartRepository = cartRepository;
+        this.maxCartItems = maxCartItems;
+    }
 
     public CartId createCart(UUID customerId) {
         log.debug("createCart customerId={}", customerId);
@@ -55,7 +61,8 @@ public class ShoppingCartService {
                     itemName,
                     Quantity.of(quantity),
                     Money.ofEuros(unitPrice),
-                    RestaurantId.of(restaurantId)
+                    RestaurantId.of(restaurantId),
+                    maxCartItems
             );
         } catch (ValidationException ve) {
             log.warn("addItem rejected: {}", ve.getMessage());

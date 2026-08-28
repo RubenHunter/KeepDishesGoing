@@ -262,7 +262,9 @@ public class Order {
     }
 
     private void validateConsistency() {
-        if (status != OrderStatus.PENDING && placedAt == null) {
+        // CANCELLED is the only non-PENDING state reachable without a placedAt:
+        // a PENDING order can be cancelled before it is ever placed.
+        if (status != OrderStatus.PENDING && status != OrderStatus.CANCELLED && placedAt == null) {
             throw new IllegalStateException("Non-pending order must have placedAt set");
         }
         if (status == OrderStatus.ACCEPTED && acceptedAt == null) {

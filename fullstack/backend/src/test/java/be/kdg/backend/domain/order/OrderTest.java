@@ -121,6 +121,14 @@ class OrderTest {
     }
 
     @Test
+    void cancelFromPending() {
+        Order o = newOrder(UUID.randomUUID());
+        o.cancel("abandoned during testing");
+        assertEquals(OrderStatus.CANCELLED, o.status());
+        assertEquals("abandoned during testing", o.rejectReason());
+    }
+
+    @Test
     void cancelFromAcceptedAllowed() {
         Order o = newOrder(UUID.randomUUID());
         o.assignPayment("p", PaymentStatus.PAID);

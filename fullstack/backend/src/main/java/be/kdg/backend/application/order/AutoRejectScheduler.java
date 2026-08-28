@@ -1,6 +1,7 @@
 package be.kdg.backend.application.order;
 
 import be.kdg.backend.application.OrderService;
+import be.kdg.backend.application.tracking.TrackingService;
 import be.kdg.backend.domain.order.Order;
 import be.kdg.backend.domain.order.OrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class AutoRejectScheduler {
 
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private final TrackingService trackingService;
 
     @Value("${kdg.order.auto-reject-timeout-minutes:5}")
     private int timeoutMinutes;
@@ -38,7 +40,9 @@ public class AutoRejectScheduler {
             try {
                 String reason = "Automatically rejected — restaurant did not respond within "
                         + timeoutMinutes + "-minute window (US23/US24)";
-                orderService.cancelOrder(order.id().value(), reason);
+                orderService.rejectOrder(order.id().value(), reason);
+                trackingService.recordEvent(order.id().value(), "ORDER_REJECTED",
+                        "{\"orderId\":\"" + order.id() + "\",\"reason\":\"" + reason + "\"}");
                 log.info("Auto-rejected order {} placed at {}", order.id(), order.placedAt());
             } catch (Exception ex) {
                 log.warn("Auto-reject failed for order {}: {}", order.id(), ex.getMessage());

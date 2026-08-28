@@ -331,6 +331,61 @@ class OrderFlowIntegrationTest {
     }
 
     @Test
+    void cancelPendingOrderWorks() throws Exception {
+        MvcResult createCart = postNoBody("/api/carts");
+        UUID cartId = UUID.fromString(mapper.readTree(createCart.getResponse().getContentAsString()).get("cartId").asText());
+        postJson("/api/carts/" + cartId + "/items", Map.of(
+                "menuItemId", UUID.randomUUID().toString(),
+                "itemName", "Pizza", "quantity", 1, "unitPrice", 10.0,
+                "restaurantId", knownRestaurantId.toString()));
+        JsonNode checkoutResp = postJson("/api/orders", Map.of(
+                "cartId", cartId.toString(),
+                "customerName", "Ruben",
+                "street", "S", "number", "1", "postalCode", "2000",
+                "city", "A", "country", "BE", "email", "r@example.com"));
+        UUID orderId = UUID.fromString(checkoutResp.get("orderId").asText());
+
+        // PENDING order can be cancelled directly (no payment/place needed).
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status").with(userJwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELLED\",\"reason\":\"testing cleanup\"}"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/orders/" + orderId + "/tracking").with(userJwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.rejectReason").value("testing cleanup"));
+    }
+
+    @Test
+    void cancelRequiresOwnership() throws Exception {
+        MvcResult createCart = postNoBody("/api/carts");
+        UUID cartId = UUID.fromString(mapper.readTree(createCart.getResponse().getContentAsString()).get("cartId").asText());
+        postJson("/api/carts/" + cartId + "/items", Map.of(
+                "menuItemId", UUID.randomUUID().toString(),
+                "itemName", "Pizza", "quantity", 1, "unitPrice", 10.0,
+                "restaurantId", knownRestaurantId.toString()));
+        JsonNode checkoutResp = postJson("/api/orders", Map.of(
+                "cartId", cartId.toString(),
+                "customerName", "Ruben",
+                "street", "S", "number", "1", "postalCode", "2000",
+                "city", "A", "country", "BE", "email", "r@example.com"));
+        UUID orderId = UUID.fromString(checkoutResp.get("orderId").asText());
+
+        // A different authenticated customer (random subject) cannot cancel it.
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status").with(jwtWithRoles("user"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELLED\",\"reason\":\"hijack\"}"))
+                .andExpect(status().isForbidden());
+
+        // A different authenticated customer cannot place it either.
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status").with(jwtWithRoles("user"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PLACED\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void paymentWebhookConfirmsOnlyOnce() throws Exception {
         // Full flow to obtain a real paymentRef.
         MvcResult createCart = postNoBody("/api/carts");

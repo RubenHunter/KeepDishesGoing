@@ -6,6 +6,7 @@ import be.kdg.backend.application.restaurant.RestaurantGateway;
 import be.kdg.backend.domain.NotFoundException;
 import be.kdg.backend.domain.order.Order;
 import be.kdg.backend.domain.order.OrderId;
+import be.kdg.backend.domain.order.OrderOwnershipException;
 import be.kdg.backend.domain.order.OrderRepository;
 import be.kdg.backend.domain.order.PaymentStatus;
 import be.kdg.backend.domain.order.RestaurantClosedException;
@@ -132,16 +133,12 @@ public class OrderService {
     }
 
     /** US18 place — only valid after payment PAID. Triggers the OrderPlaced event. */
-    public void placeOrder(UUID orderId) {
+    public void placeOrder(UUID orderId, UUID requesterCustomerId) {
         log.info("placeOrder {}", orderId);
         Order order = loadOrder(orderId);
+        requireOwnership(order, requesterCustomerId);
         ensureRestaurantOpen(order.restaurantId().value());
-        try {
-            order.place();
-        } catch (RuntimeException e) {
-            log.warn("placeOrder {} rejected: {}", orderId, e.getMessage());
-            throw e;
-        }
+        order.place();
         orderRepository.save(order);
 
         var event = new EventPublisher.OrderPlacedEvent(
@@ -162,15 +159,25 @@ public class OrderService {
         log.info("Order {} PLACED — published OrderPlaced", orderId);
     }
 
-    public void cancelOrder(UUID orderId, String reason) {
+    public void cancelOrder(UUID orderId, UUID requesterCustomerId, String reason) {
         log.info("cancelOrder {} reason={}", orderId, reason);
         Order order = loadOrder(orderId);
+        requireOwnership(order, requesterCustomerId);
         order.cancel(reason);
         orderRepository.save(order);
         var event = new EventPublisher.OrderCancelledEvent(
                 order.id().value().toString(), reason, order.cancelledAt());
         eventPublisher.publishOrderCancelled(event);
         log.info("Order {} CANCELLED — published OrderCancelled", orderId);
+    }
+
+    /** Authz guard — the requester (JWT subject) must own the order before any state change. */
+    private void requireOwnership(Order order, UUID requesterCustomerId) {
+        if (!order.customerId().value().equals(requesterCustomerId)) {
+            log.warn("Customer {} attempted to mutate order {} owned by {} — denied",
+                    requesterCustomerId, order.id(), order.customerId().value());
+            throw new OrderOwnershipException("Order " + order.id() + " does not belong to you");
+        }
     }
 
     public Order loadOrder(UUID orderId) {
@@ -198,6 +205,12 @@ public class OrderService {
 
     public void onOrderRejected(UUID orderId, String reason, LocalDateTime rejectedAt) {
         log.info("onOrderRejected {} reason={}", orderId, reason);
+        rejectOrder(orderId, reason);
+    }
+
+    /** US24 — auto-reject a stale PLACED order (order-service's own timeout, no AMQP event). */
+    public void rejectOrder(UUID orderId, String reason) {
+        log.info("rejectOrder {} reason={}", orderId, reason);
         Order order = loadOrder(orderId);
         order.reject(reason);
         orderRepository.save(order);

@@ -48,14 +48,17 @@ public class OrderController {
 
     /**
      * Canonical lifecycle transition (mistake #16): PATCH /orders/{orderId}/status
-     * with body {status: PLACED|CANCELLED, reason?}.
+     * with body {status: PLACED|CANCELLED, reason?}. Only the owning customer may
+     * mutate the order (identity from the JWT subject).
      */
     @PatchMapping("/{orderId}/status")
     public ResponseEntity<Void> updateOrderStatus(@PathVariable UUID orderId,
+                                                  JwtAuthenticationToken auth,
                                                   @Valid @RequestBody OrderStatusUpdateDto body) {
+        UUID requester = UUID.fromString(auth.getToken().getSubject());
         switch (body.status().toUpperCase()) {
-            case "PLACED" -> orderService.placeOrder(orderId);
-            case "CANCELLED" -> orderService.cancelOrder(orderId,
+            case "PLACED" -> orderService.placeOrder(orderId, requester);
+            case "CANCELLED" -> orderService.cancelOrder(orderId, requester,
                     body.reason() == null ? "Cancelled by customer" : body.reason());
             default -> throw new IllegalArgumentException(
                     "Unsupported status '" + body.status() + "' — expected PLACED|CANCELLED");

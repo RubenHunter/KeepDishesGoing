@@ -33,7 +33,7 @@ class ShoppingCartTest {
     @Test
     void addItemPinsRestaurant() {
         ShoppingCart cart = newCart();
-        cart.addItem(MenuItemId.of(UUID.randomUUID()), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA));
+        cart.addItem(MenuItemId.of(UUID.randomUUID()), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA), 50);
         assertEquals(restA, cart.restaurantId().value());
         assertEquals(1, cart.itemCount());
         assertEquals(0, cart.total().amount().compareTo(java.math.BigDecimal.valueOf(10)));
@@ -43,8 +43,8 @@ class ShoppingCartTest {
     void addingSameItemAddsQuantity() {
         UUID mi = UUID.randomUUID();
         ShoppingCart cart = newCart();
-        cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA));
-        cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(2), Money.ofEuros(10), RestaurantId.of(restA));
+        cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA), 50);
+        cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(2), Money.ofEuros(10), RestaurantId.of(restA), 50);
         assertEquals(1, cart.itemCount());
         assertEquals(3, cart.items().get(0).getQuantity().value());
         assertEquals(0, cart.total().amount().compareTo(java.math.BigDecimal.valueOf(30)));
@@ -54,18 +54,18 @@ class ShoppingCartTest {
     void addingSameItemDifferentPriceThrows() {
         UUID mi = UUID.randomUUID();
         ShoppingCart cart = newCart();
-        cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA));
+        cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA), 50);
         ValidationException ex = assertThrows(ValidationException.class,
-                () -> cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(1), Money.ofEuros(11), RestaurantId.of(restA)));
+                () -> cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(1), Money.ofEuros(11), RestaurantId.of(restA), 50));
         assertTrue(ex.getMessage().contains("different price"));
     }
 
     @Test
     void addingItemFromDifferentRestaurantThrows() {
         ShoppingCart cart = newCart();
-        cart.addItem(MenuItemId.of(UUID.randomUUID()), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA));
+        cart.addItem(MenuItemId.of(UUID.randomUUID()), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA), 50);
         ValidationException ex = assertThrows(ValidationException.class,
-                () -> cart.addItem(MenuItemId.of(UUID.randomUUID()), "Burger", Quantity.of(1), Money.ofEuros(8), RestaurantId.of(restB)));
+                () -> cart.addItem(MenuItemId.of(UUID.randomUUID()), "Burger", Quantity.of(1), Money.ofEuros(8), RestaurantId.of(restB), 50));
         assertTrue(ex.getMessage().contains("another restaurant"));
     }
 
@@ -73,7 +73,7 @@ class ShoppingCartTest {
     void updateQuantity() {
         UUID mi = UUID.randomUUID();
         ShoppingCart cart = newCart();
-        cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA));
+        cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA), 50);
         cart.updateItemQuantity(MenuItemId.of(mi), Quantity.of(5));
         assertEquals(5, cart.items().get(0).getQuantity().value());
     }
@@ -82,7 +82,7 @@ class ShoppingCartTest {
     void removeItemClearsRestaurantWhenEmpty() {
         UUID mi = UUID.randomUUID();
         ShoppingCart cart = newCart();
-        cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA));
+        cart.addItem(MenuItemId.of(mi), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA), 50);
         cart.removeItem(MenuItemId.of(mi));
         assertTrue(cart.isEmpty());
         assertNull(cart.restaurantId());
@@ -91,7 +91,7 @@ class ShoppingCartTest {
     @Test
     void clearCartResetsState() {
         ShoppingCart cart = newCart();
-        cart.addItem(MenuItemId.of(UUID.randomUUID()), "Pizza", Quantity.of(2), Money.ofEuros(10), RestaurantId.of(restA));
+        cart.addItem(MenuItemId.of(UUID.randomUUID()), "Pizza", Quantity.of(2), Money.ofEuros(10), RestaurantId.of(restA), 50);
         cart.clear();
         assertTrue(cart.isEmpty());
         assertNull(cart.restaurantId());
@@ -102,13 +102,13 @@ class ShoppingCartTest {
     void rejectsZeroUnitPrice() {
         ShoppingCart cart = newCart();
         assertThrows(ValidationException.class,
-                () -> cart.addItem(MenuItemId.of(UUID.randomUUID()), "Pizza", Quantity.of(1), Money.ofEuros(0), RestaurantId.of(restA)));
+                () -> cart.addItem(MenuItemId.of(UUID.randomUUID()), "Pizza", Quantity.of(1), Money.ofEuros(0), RestaurantId.of(restA), 50));
     }
 
     @Test
     void itemsListIsImmutable() {
         ShoppingCart cart = newCart();
-        cart.addItem(MenuItemId.of(UUID.randomUUID()), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA));
+        cart.addItem(MenuItemId.of(UUID.randomUUID()), "Pizza", Quantity.of(1), Money.ofEuros(10), RestaurantId.of(restA), 50);
         assertThrows(UnsupportedOperationException.class, () -> cart.items().add(null));
     }
 }

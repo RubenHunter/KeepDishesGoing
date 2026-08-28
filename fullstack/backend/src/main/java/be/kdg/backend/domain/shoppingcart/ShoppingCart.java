@@ -27,8 +27,6 @@ import java.util.Optional;
 @AggregateRoot
 public class ShoppingCart {
 
-    private final int MAX_ITEMS_DEFAULT = 50; // configurable via service constant; here just upper bound
-
     @Identity
     private final CartId id;
     private final CustomerId customerId;
@@ -67,7 +65,7 @@ public class ShoppingCart {
     // ---- Aggregate behaviour -------------------------------------------------
 
     public void addItem(MenuItemId menuItemId, String itemName, Quantity quantity,
-                        Money unitPrice, RestaurantId itemRestaurantId) {
+                        Money unitPrice, RestaurantId itemRestaurantId, int maxItems) {
         requireNonNull(menuItemId, "menuItemId");
         requireNonBlank(itemName, "itemName");
         requireNonNull(quantity, "quantity");
@@ -89,8 +87,8 @@ public class ShoppingCart {
             }
             existingItem.increaseQuantity(quantity);
         } else {
-            if (items.size() >= MAX_ITEMS_DEFAULT) {
-                throw new ValidationException("Cart item cap exceeded (" + MAX_ITEMS_DEFAULT + ")");
+            if (items.size() >= maxItems) {
+                throw new ValidationException("Cart item cap exceeded (" + maxItems + ")");
             }
             items.add(CartItem.create(menuItemId, itemName, quantity, unitPrice));
         }
