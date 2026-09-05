@@ -1,0 +1,11 @@
+title,description
+US27: Als koerier wil ik mezelf bezorgingen kunnen toewijzen (self-assign).,
+US28: Als koerier wil ik bestellingen kunnen claimen zodra ze door het restaurant zijn aanvaard.,
+US29: Als koerier wil ik mijn claim kunnen annuleren zolang de bestelling nog niet klaar is voor afhalen.,
+"US30: Als koerier wil ik, zodra de bestelling klaar is, verplicht de bezorging afronden (van afhalen tot levering).",
+US31: Als KDG wil ik dat elke koerier slechts één actieve toewijzing tegelijk kan hebben.,
+US32: Als KDG wil ik dat per bestelling maximaal één koerier tegelijk is toegewezen.,
+US33: Als klant wil ik in het tracking-scherm de voortgang van de bezorging kunnen volgen.,
+US34: Als KDG wil ik bij afleveren automatisch de uitbetaling voor de koerier berekenen en crediteren.,
+"US35: Als koerier wil ik een lijst met afgeronde bezorgingen en bijhorende uitbetalingen zien, met doorlopend totaal.",
+US41: Als KDG wil ik unit tests met een lijn coverage van minstens 80%,

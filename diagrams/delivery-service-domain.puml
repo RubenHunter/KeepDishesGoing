@@ -1,0 +1,183 @@
+@startuml delivery-service-domain
+!define AGG #FFB7B2
+!define VO #B5EAD7
+!define ENT #FFDAC1
+!define ENUM #C7CEEA
+!define AR #DDDDDD
+skinparam classBackgroundColor white
+skinparam packageBackgroundColor white
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 60
+
+title Delivery Service — Domain Model (target build-out)
+
+package "be.kdg.backend.domain" {
+
+  package "delivery" <<Aggregate • Delivery AR>> {
+    class Delivery <<Aggregate Root>> <<AGG>> {
+      + id : DeliveryId
+      + orderId : OrderId                    // ref-by-ID to order-service Order
+      - deliveryPersonId : DeliveryPersonId   // ref-by-ID to DeliveryPerson AR
+      + pickupAddress : Address               // copied at creation from restaurant event
+      + deliveryAddress : Address              // copied from order event (US19)
+      - status : DeliveryStatus
+      + assignedAt / pickedUpAt / deliveredAt
+      - cancellationReason : CancellationReason
+      - availableForSelfAssignment : boolean
+      --
+      {static} + for(orderId, pickup, delivery) : Delivery    // OrderAccepted handler
+      {static} + rehydrate(...)
+      + selfAssign(personId, now)                            // US27 / US28, throws if already assigned (US32)
+      + markReadyForPickup(now)                               // transition on OrderReadyForPickup event (US29 boundary)
+      + markPickedUp(now)                                      // US30
+      + markInTransit(now)
+      + markDelivered(now)                                     // US30 → triggers Payout calc + OrderDelivered event
+      + cancelClaim(reason, now)                               // US29 only valid while status==ASSIGNED; forbidden after READY_FOR_PICKUP
+      + canBeClaimedBy(personId) : boolean                    // US31 single-active (delegates via query)
+      + isTerminal() : boolean
+    }
+    class DeliveryId <<VO>> <<VO>>
+    enum DeliveryStatus <<ENUM>> {
+      PENDING
+      ASSIGNED
+      READY_FOR_PICKUP
+      PICKED_UP
+      IN_TRANSIT
+      DELIVERED
+      CANCELLED
+    }
+    interface DeliveryRepository <<port>> <<AR>> {
+      + save(d)
+      + findById(id) : Optional<Delivery>
+      + findByOrderId(orderId) : Optional<Delivery>
+      + findAvailable() : List<Delivery>
+      + findByDeliveryPersonId(id) : List<Delivery>
+    }
+  }
+
+  package "driver" <<Aggregate • DeliveryPerson AR>> {
+    class DeliveryPerson <<Aggregate Root>> <<AGG>> {
+      + id : DeliveryPersonId
+      + name : PersonName
+      + vehicleType : VehicleType
+      - available : boolean
+      + currentLocation : Location
+      - assignedDeliveryId : DeliveryId       // ref-by-ID to Delivery AR (US31 single-active)
+      + assignmentTime : LocalDateTime
+      --
+      {static} + create(...) : DeliveryPerson
+      {static} + rehydrate(...)
+      + assignDelivery(deliveryId)             // US27 — throws if hasActive (US31)
+      + unassignDelivery()                       // US29 → release
+      + updateLocation(loc)
+      + canAccept() : boolean
+      + hasActiveAssignment() : boolean
+    }
+    class DeliveryPersonId <<VO>> <<VO>>
+    class PersonName <<VO>> <<VO>>
+    enum VehicleType <<ENUM>> {
+      BICYCLE
+      SCOOTER
+      WALKING
+      CAR
+    }
+    interface DeliveryPersonRepository <<port>> <<AR>> {
+      + save(p)
+      + findById(id) : Optional<DeliveryPerson>
+      + findByDeliveryId(id) : Optional<DeliveryPerson>
+    }
+  }
+
+  package "payout" <<Aggregate • Payout AR — NEW for US34-38>> {
+    class Payout <<Aggregate Root>> <<AGG>> {
+      + id : PayoutId
+      + deliveryId : DeliveryId
+      + driverId : DeliveryPersonId
+      + minutesBilled : int           // clamp 5..30 per US36
+      + total : Money
+      + baseFee : Money                // 3.00 EUR config
+      + perMinuteFee : Money           // 0.30 EUR config
+      + readyAt / deliveredAt / computedAt
+      --
+      {static} + compute(delivery, policy, now) : Payout
+    }
+    class PayoutId <<VO>> <<VO>>
+    interface PayoutPolicy <<port>> <<AR>> {
+      + baseFee() : Money
+      + perMinuteFee() : Money
+      + minMinutes() : int
+      + maxMinutes() : int
+      + billableMinutes(readyAt, deliveredAt) : int   // clamp 5..30
+      + compute(readyAt, deliveredAt) : Money
+    }
+    interface PayoutRepository <<port>> <<AR>> {
+      + save(p)
+      + findById(id) : Optional<Payout>
+      + findByDeliveryId(id) : Optional<Payout>
+      + findByDriverId(id) : List<Payout>
+      + findByDriverIdAndDateRange(id, from, to) : List<Payout>
+    }
+  }
+
+  package "shared (VOs)" <<Value Objects>> {
+    class Address <<VO>> <<VO>>
+    class Location <<VO>> <<VO>> {
+      + lat : double
+      + lng : double
+      + distanceTo(other) : double
+    }
+    class Money <<VO>> <<VO>> {
+      + amount : BigDecimal
+      + currency : String
+      + add(m) / multiply(int)
+    }
+    class CancellationReason <<VO>> <<VO>> {
+      + value : String
+    }
+    class OrderId <<VO>> <<VO>>
+  }
+}
+
+' Ref-by-ID links
+Delivery -[#blue]-> DeliveryPersonId : ref-by-ID
+DeliveryPerson -[#blue]-> DeliveryId : ref-by-ID
+Delivery -[#blue]-> OrderId : ref-by-ID (cross-service)
+Payout -[#blue]-> DeliveryId : ref-by-ID
+Payout -[#blue]-> DeliveryPersonId : ref-by-ID
+
+' One-aggregate-per-tx rule: assignments cross Delivery+DeliveryPerson =
+' DIFFERENT transactions wired via Spring ApplicationEvent inside app layer.
+
+note right of Delivery
+  **US27 selfAssign** throws if:
+   - already assigned (US32 single-courier)
+   - status != PENDING at call time
+
+  **US29 cancelClaim**: only when status==ASSIGNED
+   After OrderReadyForPickup event (status >= READY_FOR_PICKUP)
+   cancel forbidden — courier must finish (US30)
+
+  **markDelivered** publishes OrderDelivered AND triggers
+   Payout.compute in a separate tx (one-agg-per-tx rule)
+end note
+
+note bottom of PayoutPolicy
+  **US36 config** (externalized @ConfigurationProperties):
+    base-fee    = 3.00 EUR
+    per-minute  = 0.30 EUR
+    min-minutes = 5
+    max-minutes = 30
+  **billableMinutes**: ceil((delivered-ready)/60s) clamped [5,30]
+
+  **US37**: Payout only created when Delivery.status==DELIVERED.
+            Cancel before READY_FOR_PICKUP → no Payout row.
+
+  Per PDF table:
+    3m10s → 5  → €3.00 + 0.30*5  = €4.50
+    17m50s → 18 → €3.00 + 0.30*18 = €8.40
+    33m05s → 30 → €3.00 + 0.30*30 = €12.00
+end note
+@enduml

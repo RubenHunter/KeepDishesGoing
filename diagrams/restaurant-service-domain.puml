@@ -1,0 +1,172 @@
+@startuml restaurant-service-domain
+!define AR #DDDDDD
+!define VO #B5EAD7
+!define ENT #FFDAC1
+!define AGG #FFB7B2
+!define ENUM #C7CEEA
+skinparam classBackgroundColor white
+skinparam packageBackgroundColor white
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 60
+
+title Restaurant Service — Domain Model\n(restored (+) vs current (new *))
+
+package "be.kdg.backend.domain" {
+
+  package "owner" <<Aggregate • Owner AR>> {
+    class Owner <<Aggregate Root>> <<AGG>> {
+      + id : OwnerId (UUID)
+      + externalSubjectId : String  // Keycloak sub
+      + email : String
+      + firstName : String
+      + lastName : String
+      --
+      {static} + create(...) : Owner
+    }
+  }
+
+  package "scheduling" <<Aggregate • ScheduledPublishJob AR>> {
+    class ScheduledPublishJob <<Aggregate Root>> <<AGG>> {
+      + id : UUID
+      + restaurantId : UUID          // ref by ID to Restaurant AR
+      + publishAt : LocalDateTime
+      - status : Status
+      - attempts : int
+      - lastError : String
+      --
+      {static} + create(...) : ScheduledPublishJob
+      {static} + rehydrate(...)  : ScheduledPublishJob
+      + markRunning()
+      + markDone()
+      + markFailed(error)
+    }
+    enum Status <<ENUM>> {
+      PENDING
+      RUNNING
+      DONE
+      FAILED
+    }
+    ScheduledPublishJob +-- Status : has
+  }
+
+  package "restaurant" <<Aggregate • Restaurant AR>> {
+    class Restaurant <<Aggregate Root>> <<AGG>> {
+      + id : RestaurantId
+      + name : RestaurantName
+      - status : RestaurantStatus
+      - dishes : List<Dish>          // AR owns parts
+      - ownerId : UUID              // ref by ID to Owner AR (Keycloak sub)
+      - fullAddress : String        // *replace with Address VO
+      - email : Email
+      - openingHours : String       // *replace with WeeklyOpeningHours VO
+      - logoUrl : URL
+      - restaurantType : RestaurantType  // *NEW for US39
+      --
+      {static} + create(...) : Restaurant
+      {static} + create(...policy) : Restaurant   // US1 uniqueness guard
+      + open()
+      + close()
+      + isOpen(now) : boolean                       // *NEW US13
+      + createDraftDish(...) : DishId               // US4
+      + updateDraftDish(...)                         // US5
+      + publishDish(dishId)                          // US6
+      + dePublishDish(dishId)                         // US6
+      + markDishOutOfStock(dishId)                    // US9
+      + publishAllDraftDishes()                       // US7
+      + getPublishedMenu() : List<Dish>              // (public view)
+      + countPending() : int                          // *NEW US5
+    }
+    class RestaurantId <<VO>> <<VO>>
+    class RestaurantName <<VO>> <<VO>>
+    enum RestaurantStatus <<ENUM>> {
+      ACTIVE
+      INACTIVE
+    }
+    enum RestaurantType <<ENUM>> {
+      FAST_FOOD
+      BROODJESZAKEN
+      COMFORT_FOOD
+      FIJN_DINEREN
+      VISRESTAURANTS
+      MICHELIN_STER
+    }
+    interface IRestaurantRepository <<port>> <<AR>> {
+      + save(restaurant)
+      + findById(id) : Optional<Restaurant>
+      + findByOwnerId(ownerId) : Optional<Restaurant>
+      + existsByOwnerId(ownerId) : boolean
+      + getOwnerId(restaurantId) : Optional<UUID>
+    }
+  }
+
+  package "dish" <<Inside Restaurant AR>> {
+    class Dish <<Entity>> <<ENT>> {
+      + id : DishId                  // @Identity
+      + name : DishName
+      - description : Description
+      - price : Price
+      - category : DishCategory
+      - status : DishStatus
+      --
+      {static} + createDraft(...) : Dish
+      + publish()                    // own invariant: price>0, not already published
+      + markOutOfStock()
+      + markAsDraft()
+      + updatePrice(newPrice)
+      + updateDescription(d)
+      + updateCategory(c)
+      + isAvailable(price) : boolean
+    }
+    class DishId <<VO>> <<VO>>
+    class DishName <<VO>> <<VO>>
+    class Description <<VO>> <<VO>>
+    enum DishCategory <<ENUM>> {
+      STARTER / MAIN_COURSE / DESSERT / DRINK / SOUP / SALAD / OTHER
+    }
+    enum DishStatus <<ENUM>> {
+      DRAFT
+      PUBLISHED
+      OUT_OF_STOCK
+    }
+  }
+
+  class Price <<VO>> <<VO>> {
+    + amount : BigDecimal
+    + currency : String  // "EUR"
+    --
+    + positive(amount) : boolean
+  }
+
+  '* NEW value objects (target)'
+  class Address <<VO>> <<VO>> {
+    + street / number / postal / city / country
+  }
+  class Email <<VO>> <<VO>> {
+    + value : String
+    + isValid() : boolean
+  }
+  class WeeklyOpeningHours <<VO>> <<VO>> {
+    + schedule : Map<DayOfWeek, TimeWindow>
+    + isOpen(now) : boolean
+  }
+}
+
+' References — IDs only, NOT object references (DDD aggregate rule)
+Restaurant "1" -[#blue]-> "1" Owner : ownerId  // ref-by-ID
+Restaurant "1" *-[#green]- "0..10" Dish : owns parts
+ScheduledPublishJob "*" -[#blue]-> "1" Restaurant : restaurantId  // ref-by-ID
+
+' Repository ports owned by domain
+IRestaurantRepository ..> Restaurant
+ScheduledPublishJob <-down- IScheduledPublishRepository
+
+note bottom of Restaurant
+  US1: only one restaurant per Owner  (enforced by OwnerRestaurantUniquenessPolicy)
+  US10: max 10 PUBLISHED dishes (externalized constant)
+  US11/13/14: open hours + manual open/close — isOpen()
+  US22/26: publish OrderAccepted/Rejected/Ready events (*NEW)
+end note
+@enduml

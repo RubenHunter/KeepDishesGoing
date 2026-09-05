@@ -1,0 +1,110 @@
+@startuml order-flow-events
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+title Keep Dishes Going — Order Lifecycle Events\n(solid = HTTP, blue dashed = AMQP topic exchange)
+
+actor "Customer"      as C
+actor "Owner"         as O
+actor "Driver"        as D
+actor "Admin"         as A
+participant "order-service\n(:8081, public)" as OS
+participant "restaurant-service\n(:8080, JWT owner)" as RS
+participant "delivery-service\n(:8082, JWT driver|admin)" as DS
+database "Postgres\nschema ordering/restaurant/delivery" as PG
+queue "RabbitMQ\nexchange: kdg.events (topic)" as MQ
+queue "Keycloak\nrealm keepdishesgoing" as KC
+
+== Customer cart + checkout ==
+C -> OS: POST /api/carts {restaurantId}
+OS -> PG: insert ShoppingCart
+OS -->> C: {cartId}
+C -> OS: POST /api/carts/{cartId}/items {menuItemId,name,qty,unitPrice}
+OS -> PG: update ShoppingCart (US16 single-restaurant)
+C -> OS: POST /api/carts/{cartId}/checkout {name, addr, email}
+OS -> RS: POST /api/restaurants/{id}/menu/{dishId}/validate (HTTP, US17)
+RS -> PG: read Dish
+RS -->> OS: {valid:true/false}
+OS -> OS: ShoppingCart.snapshot()  // US18 freeze
+OS -> OS: Order.fromSnapshot(...)  // status=PENDING
+OS -> PG: save Order
+OS -->> C: {orderId, paymentUrl}
+
+== Payment ==
+C -> OS: POST /api/payments/{ref}/confirm (stub webhook, US20)
+OS -> OS: Order.assignPayment(ref, PAID)
+OS -> OS: Order.place()  // PENDING→PLACED, freeze total
+OS -> MQ: publish **order.placed** (routing-key "order.placed")
+OS -->> C: 204 placed
+
+== Restaurant decision ==
+MQ -> RS: deliver **order.placed** to q.restaurant.order.events
+RS -> RS: DecisionService.handle(orderPlaced)
+RS -> PG: read Restaurant + published Menu (US11/13/14)
+alt restaurant accepts within 5min (US22/23)
+  O -> RS: POST /api/restaurants/orders/{orderId}/accept  (manual, beats timer)
+  RS -> RS: emits OrderAccepted domain event
+else auto-reject after 5min (US24)
+  RS -> RS: scheduled @Scheduled picks stale orders
+  RS -> MQ: publish **order.rejected** {reason:"decision window expired"}
+end
+
+alt accepted
+  RS -> MQ: publish **order.accepted** {pickupAddress, restaurantId}
+  MQ -> OS: q.order.restaurant.events
+  OS -> PG: Order.accept(now)
+  MQ -> DS: q.delivery.order.events
+  DS -> DS: OrderAcceptedHandler → Delivery.for(orderId, pickup, delivery) (PENDING+availableForSelfAssignment)
+  DS -> PG: save Delivery
+else rejected
+  RS -> MQ: publish **order.rejected** {reason}
+  MQ -> OS: q.order.restaurant.events
+  OS -> PG: Order.reject(reason, now)
+  C -> OS: GET /api/orders/{id}/tracking  → reason visible (US25)
+end
+
+== Ready for pickup ==
+O -> RS: POST /api/restaurants/orders/{orderId}/ready (US26)
+RS -> MQ: publish **order.ready_for_pickup**
+MQ -> OS: q.order.restaurant.events
+OS -> PG: Order.markReadyForPickup(now)
+MQ -> DS: q.delivery.order.events
+DS -> DS: OrderReadyForPickupHandler
+DS -> PG: Delivery.markReadyForPickup(now)   // US29 gate
+
+== Driver claim (US27..US32) ==
+D -> DS: POST /api/deliveries/{deliveryId}/claim {driverId}  (JWT driver)
+DS -> DS: Delivery.selfAssign(driverId, now)   // US32 throws if already claimed
+DS -> PG: save Delivery  (tx1)
+DS -> DS: publish Spring ApplicationEvent (within service — tx1 commit)
+DS -> DS: @TransactionalEventListener(AFTER_COMMIT) load DeliveryPerson, assignDelivery  // tx2
+DS -> PG: save DeliveryPerson
+DS -> DS: Delivery state now ASSIGNED
+MQ <- DS: publication of internal event **stays local** (driver notify is internal)
+note right: no AMQP for driver-assigned; consumer is order-service tracking through status events below
+
+== Pickup → Deliver (US30) ==
+D -> DS: POST /api/deliveries/{deliveryId}/pickup
+DS -> DS: Delivery.markPickedUp(now)   // only after READY_FOR_PICKUP
+DS -> PG: save Delivery
+DS -> MQ: publish **order.picked_up**
+MQ -> OS: q.order.restaurant.events
+OS -> PG: Order.markPickedUp(now)
+
+D -> DS: POST /api/deliveries/{deliveryId}/transit
+DS -> PG: Delivery.markInTransit(now)
+
+D -> DS: POST /api/deliveries/{deliveryId}/deliver
+DS -> DS: Delivery.markDelivered(now)        // US30
+DS -> PG: save Delivery                       // tx1
+DS -> DS: @TransactionalEventListener AFTER_COMMIT → Payout.compute(DELI very, policy, now)  // tx2
+DS -> PG: save Payout
+DS -> MQ: publish **order.delivered**
+MQ -> OS: Order.markDelivered(now)
+
+== Admin report (US38) ==
+A -> DS: GET /api/admin/payouts/report?from=&to=  (JWT admin)
+DS -> PG: query payouts in range, group by driver
+DS -> DS: PdfReportGenerator.render(template + data)  // OpenHTMLtoPDF + Thymeleaf
+DS -->> A: application/pdf stream
+
+@enduml

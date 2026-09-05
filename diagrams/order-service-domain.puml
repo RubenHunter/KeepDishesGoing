@@ -1,0 +1,175 @@
+@startuml order-service-domain
+!define AGG #FFB7B2
+!define VO #B5EAD7
+!define ENT #FFDAC1
+!define ENUM #C7CEEA
+!define AR #DDDDDD
+skinparam classBackgroundColor white
+skinparam packageBackgroundColor white
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 60
+
+title Order Service — Domain Model (target after rewrite)\nNO security (public API per PDF)
+
+package "be.kdg.backend.domain" {
+
+  package "shoppingcart" <<Aggregate • ShoppingCart AR>> {
+    class ShoppingCart <<Aggregate Root>> <<AGG>> {
+      + id : CartId
+      + customerId : CustomerId
+      - restaurantId : RestaurantId        // pinned on first add (US16)
+      - items : List<CartItem>            // AR owns parts
+      - totalAmount : Money (dynamic)
+      + createdAt / updatedAt
+      --
+      {static} + create(customerId) : ShoppingCart
+      {static} + rehydrate(...) : ShoppingCart
+      + addItem(menuItemId, name, qty, unitPrice, restaurantId)   // validates single-restaurant US16
+      + updateItemQty(menuItemId, qty)
+      + removeItem(menuItemId)
+      + clear()
+      + isEmpty() : boolean
+      + total() : Money
+      + snapshot() : OrderSnapshot    // freeze at checkout (US18)
+    }
+    class CartItem <<Entity>> <<ENT>> {
+      + menuItemId : MenuItemId
+      + name : String
+      - quantity : Quantity
+      + unitPrice : Money
+    }
+    class CartId <<VO>> <<VO>>
+    interface ShoppingCartRepository <<port>> <<AR>> {
+      + save(cart)
+      + findById(id) : Optional<ShoppingCart>
+      + deleteById(id)
+    }
+  }
+
+  package "order" <<Aggregate • Order AR>> {
+    class Order <<Aggregate Root>> <<AGG>> {
+      + id : OrderId
+      + customerId : CustomerId
+      + restaurantId : RestaurantId
+      - items : List<OrderItem>           // frozen @release() — US18
+      - totalAmount : Money                // frozen once PLACED — US18
+      - status : OrderStatus
+      + deliveryAddress : Address
+      + customerEmail : Email
+      + customerName : String
+      - paymentRef : String                // from PaymentGateway
+      - paymentStatus : PaymentStatus
+      + createdAt / placedAt / acceptedAt / rejectedAt / readyAt / pickedUpAt / deliveredAt
+      - rejectReason : String
+      --
+      {static} + fromSnapshot(snap, ...) : Order  // checkout creates from cart
+      {static} + rehydrate(...) : Order
+      + place()                              // IN-variant → PLACED, freeze contents US18
+      + accept(at)                            // PLACED → ACCEPTED  (event trig)
+      + reject(reason, at)                    // PLACED → REJECTED   (event trig)
+      + markReadyForPickup(at)                // ACCEPTED → READY     (event trig)
+      + markPickedUp(at)                      // READY → PICKED_UP   (event trig)
+      + markDelivered(at)                     // PICKED_UP → DELIVERED (event trig)
+      + cancel(reason)                         // PLACED|ACCEPTED → CANCELLED
+      + assignPayment(ref, status)
+      + isModifiable() : boolean              // false once PLACED
+    }
+    class OrderItem <<Entity>> <<ENT>> {
+      + menuItemId : MenuItemId       // @Identity
+      + itemName : String               // frozen from snapshot US18
+      - quantity : Quantity
+      + unitPrice : Money               // frozen from snapshot US18
+      --
+      + calculateLineTotal() : Money
+    }
+    class OrderId <<VO>> <<VO>>
+    class CustomerId <<VO>> <<VO>>
+    class RestaurantId <<VO>> <<VO>>
+    class MenuItemId <<VO>> <<VO>>
+    enum OrderStatus <<ENUM>> {
+      PENDING
+      PLACED
+      ACCEPTED
+      READY_FOR_PICKUP
+      PICKED_UP
+      DELIVERED
+      REJECTED
+      CANCELLED
+    }
+    enum PaymentStatus <<ENUM>> {
+      AWAITING
+      PAID
+      FAILED
+    }
+    interface OrderRepository <<port>> <<AR>> {
+      + save(order)
+      + findById(id) : Optional<Order>
+      + findByCustomerId(id) : List<Order>
+    }
+  }
+
+  package "shared (VOs)" <<Value Objects>> {
+    class Money <<VO>> <<VO>> {
+      + amount : BigDecimal
+      + currency : String  // "EUR"
+      --
+      + ZERO : Money
+      + add(m) / multiply(int) / equals
+      + isPositive() / isZero()
+    }
+    class Quantity <<VO>> <<VO>> {
+      + value : int (>0)
+      --
+      {static} + of(int)  // validates >0
+    }
+    class Address <<VO>> <<VO>> {
+      + street / number / postal / city / country
+    }
+    class Email <<VO>> <<VO>> {
+      + value : String
+      + isValid() : boolean
+    }
+    class OrderSnapshot <<VO>> <<VO>> {
+      + items : List<SnapshotItem>
+      + total : Money
+      + restaurantId : RestaurantId
+    }
+    class OrderFrozenException <<DomainException>>
+  }
+
+  ' Ports that live in application — outbound adapters (drawn dashed = port)'
+  interface EventPublisher <<port external>> <<AR>>
+  interface RestaurantGateway <<port external>> <<AR>> {
+    + validateMenuItems(req) : ValidationResult
+    + getRestaurant(id) : RestaurantDto
+    + getMenu(id) : List<DishDto>
+    + getPriceCategory(id, type) : PriceSymbol   // US39
+  }
+  interface PaymentGateway <<port external>> <<AR>> {
+    + startPayment(order) : PaymentRef + redirectUrl
+    + confirmPayment(ref) : PaymentStatus
+  }
+}
+
+ShoppingCart "1" *-- "0..*" CartItem
+Order "1" *-- "0..*" OrderItem
+ShoppingCart ..> OrderSnapshot : snapshot builds
+OrderSnapshot ..> Order : fromSnapshot uses
+ShoppingCart -[#blue]-> RestaurantId : ref-by-ID
+Order -[#blue]-> RestaurantId : ref-by-ID
+Order -left..> EventPublisher : publishes orders.placed
+Order ..> RestaurantGateway : validates before place (US17)
+Order ..> PaymentGateway : pays at place (US20)
+
+note bottom of Order
+  US16: ShoppingCart allows items from ONE restaurant only
+        (enforced in addItem by comparing restaurantId)
+  US18: At place() items+price snapshot frozen
+        → Result copied into Order via OrderSnapshot
+  Status transitions ALL in domain, NOT in ApplicationService
+  ApplicationService only calls domain + repo + publishes events
+end note
+@enduml
