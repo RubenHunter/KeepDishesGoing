@@ -1,0 +1,126 @@
+@restaurantId = a6a52c73-9070-4128-a988-255383b941bc
+
+@dishId = 4ac746dc-7943-479e-b3ee-d158b9f15260
+### Create a new dish
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/dishes
+Content-Type: application/json
+
+{
+  "name": "Lasagna",
+  "description": "Layered pasta with meat and cheese",
+  "price": {
+    "amount": 14.5,
+    "currency": "EUR"
+  },
+  "category": "MAIN_COURSE"
+}
+
+### Get all dishes for a restaurant
+GET http://localhost:8080/api/restaurants/{{restaurantId}}/dishes
+
+### Get published menu for a restaurant
+GET http://localhost:8080/api/restaurants/{{restaurantId}}/menu
+
+
+### Update a dish
+PUT http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}
+Content-Type: application/json
+
+{
+  "name": "Lasagna",
+  "description": "Layered pasta with meat, cheese, and spinach",
+  "price": {
+    "amount": 20.0,
+    "currency": "EUR"
+  },
+  "category": "MAIN_COURSE"
+}
+
+### Publish a dish
+PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/status
+Content-Type: application/json
+
+{
+  "status": "PUBLISHED"
+}
+
+### Depublish a dish
+PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/status
+Content-Type: application/json
+
+{
+  "status": "DRAFT"
+}
+
+### Set dish availability
+PATCH http://localhost:8080/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/status
+Content-Type: application/json
+
+{
+  "status": "OUT_OF_STOCK",
+  "available": false
+}
+
+### Publish all draft dishes
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/menu/publications
+
+### Schedule publish of all draft dishes
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/menu/publications
+Content-Type: application/json
+
+{
+  "publishAt": "2025-10-15T20:39:00"
+}
+
+### Validate menu item with correct price (US17)
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/menu/{{dishId}}/validation
+Content-Type: application/json
+
+{
+  "expectedPrice": 14.5,
+  "currency": "EUR"
+}
+
+### Validate menu item with wrong price (US17)
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/menu/{{dishId}}/validation
+Content-Type: application/json
+
+{
+  "expectedPrice": 10.0,
+  "currency": "EUR"
+}
+
+### Validate non-existent menu item (US17)
+POST http://localhost:8080/api/restaurants/{{restaurantId}}/menu/00000000-0000-0000-0000-000000000000/validation
+Content-Type: application/json
+
+{
+  "expectedPrice": 15.0,
+  "currency": "EUR"
+}
+
+
+### [CANONICAL] Dish lifecycle via single status endpoint (PATCH)
+PATCH {{host}}/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/status
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "status": "PUBLISHED" }
+
+###
+PATCH {{host}}/api/restaurants/{{restaurantId}}/dishes/{{dishId}}/status
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "status": "OUT_OF_STOCK", "available": false }
+
+### [CANONICAL] Menu publication as sub-resource — apply all drafts now (US7)
+POST {{host}}/api/restaurants/{{restaurantId}}/menu/publications
+Authorization: Bearer {{ownerToken}}
+
+### [CANONICAL] Menu publication scheduled for later (US8)
+POST {{host}}/api/restaurants/{{restaurantId}}/menu/publications
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "publishAt": "2026-12-31T18:00:00" }
