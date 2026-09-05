@@ -1,0 +1,13 @@
+spring:
+  mvc:
+    cors:
+      mappings:
+        "/**":
+          allowed-origins: "*"
+          allowed-methods: "*"
+          allowed-headers: "*"
+server:
+  port: 8081
+logging:
+  level:
+    org.springframework.security: INFO

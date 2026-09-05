@@ -1,0 +1,479 @@
+/* ============ App nav ============ */
+.app-nav {
+	position: sticky;
+	top: 0;
+	z-index: var(--z-sticky);
+	background: var(--surface);
+	border-bottom: 1px solid var(--border);
+	height: 64px;
+	display: flex;
+	align-items: center;
+}
+
+.app-nav .container {
+	display: flex;
+	align-items: center;
+	gap: var(--space-6);
+}
+
+.brand {
+	font-weight: 800;
+	font-size: var(--text-lg);
+	letter-spacing: -0.02em;
+	color: var(--text);
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+}
+
+.brand:hover {
+	text-decoration: none;
+}
+
+.brand .mark {
+	width: 30px;
+	height: 30px;
+	display: block;
+}
+
+.nav-links {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
+	margin-left: auto;
+}
+
+.nav-links a {
+	color: var(--text-muted);
+	font-weight: 500;
+	font-size: var(--text-sm);
+	padding: var(--space-2) var(--space-3);
+	border-radius: var(--radius-md);
+	transition:
+		color var(--dur-fast) var(--ease),
+		background var(--dur-fast) var(--ease);
+}
+
+.nav-links a:hover {
+	color: var(--text);
+	background: var(--surface-sunken);
+	text-decoration: none;
+}
+
+.nav-links a.active {
+	color: var(--accent);
+	background: var(--accent-soft);
+}
+
+.cart-link {
+	position: relative;
+}
+
+.nav-sep {
+	color: var(--accent);
+	font-weight: 600;
+	padding-inline: var(--space-1);
+	user-select: none;
+}
+
+.cart-count {
+	position: absolute;
+	top: 0;
+	right: 0;
+	transform: translate(40%, -40%);
+	background: var(--accent);
+	color: #fff7ed;
+	font-size: var(--text-xs);
+	font-weight: 700;
+	min-width: 18px;
+	height: 18px;
+	border-radius: var(--radius-pill);
+	display: grid;
+	place-items: center;
+	padding-inline: 4px;
+}
+
+/* ============ Restaurant list ============ */
+.grid-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: var(--space-4);
+}
+
+/* ============ Restaurant cards (Uber Eats style) ============ */
+.restaurant-card {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	padding: 0;
+}
+
+.restaurant-card .restaurant-media {
+	position: relative;
+	aspect-ratio: 16 / 9;
+	background: var(--surface-sunken);
+}
+
+.restaurant-banner {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: grid;
+	place-items: center;
+	font-weight: 800;
+	font-size: var(--text-2xl);
+	color: var(--accent);
+}
+
+/* Menu page logo (detail header) */
+.restaurant-logo {
+	width: 96px;
+	height: 96px;
+	border-radius: var(--radius-lg);
+	object-fit: cover;
+	background: var(--surface-sunken);
+	flex-shrink: 0;
+	font-size: var(--text-2xl);
+}
+
+.restaurant-card .price-chip {
+	position: absolute;
+	top: var(--space-2);
+	left: var(--space-2);
+	background: rgba(255, 255, 255, 0.94);
+	color: #1c1917;
+	font-family: var(--font-mono);
+	font-weight: 800;
+	font-size: var(--text-sm);
+	line-height: 1;
+	padding: var(--space-1) var(--space-2);
+	border-radius: var(--radius-pill);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.restaurant-card .status-chip {
+	position: absolute;
+	top: var(--space-2);
+	right: var(--space-2);
+	font-size: var(--text-xs);
+	font-weight: 700;
+	line-height: 1;
+	padding: var(--space-1) var(--space-2);
+	border-radius: var(--radius-pill);
+	color: #fff;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.restaurant-card .status-chip.open {
+	background: #16a34a;
+}
+
+.restaurant-card .status-chip.closed {
+	background: #57534e;
+}
+
+.restaurant-card .restaurant-body {
+	padding: var(--space-4);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+}
+
+.restaurant-card .restaurant-name-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+
+.restaurant-card .restaurant-name-row .name {
+	font-weight: 700;
+	font-size: var(--text-lg);
+}
+
+.restaurant-card .address {
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+}
+
+.restaurant-card .meta-row {
+	display: flex;
+	gap: var(--space-3);
+	align-items: center;
+	flex-wrap: wrap;
+	margin-top: var(--space-2);
+	font-size: var(--text-xs);
+	color: var(--text-muted);
+}
+
+.price-category {
+	font-family: var(--font-mono);
+	font-weight: 700;
+	color: var(--accent);
+	letter-spacing: 0.05em;
+}
+
+/* ============ Menu view ============ */
+.menu-layout {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: var(--space-6);
+}
+
+@media (min-width: 1024px) {
+	.menu-layout {
+		grid-template-columns: 1fr 340px;
+		align-items: start;
+	}
+}
+
+.dish-card {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--space-4);
+	align-items: flex-start;
+}
+
+.dish-card .dish-name {
+	font-weight: 600;
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.dish-card .dish-desc {
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+	margin-top: var(--space-1);
+}
+
+.dish-card .dish-side {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: var(--space-2);
+	flex-shrink: 0;
+}
+
+.dish-unavailable {
+	opacity: 0.65;
+}
+
+/* Cart summary sidebar */
+.cart-summary {
+	position: sticky;
+	top: 80px;
+}
+
+.cart-summary .row {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--space-3);
+	font-size: var(--text-sm);
+	padding-block: var(--space-2);
+}
+
+.cart-summary .row.total {
+	border-top: 1px solid var(--border);
+	margin-top: var(--space-2);
+	padding-top: var(--space-3);
+	font-weight: 700;
+	font-size: var(--text-base);
+}
+
+/* ============ Cart page ============ */
+.cart-lines {
+	display: flex;
+	flex-direction: column;
+}
+
+.cart-line {
+	display: flex;
+	align-items: center;
+	gap: var(--space-4);
+	padding-block: var(--space-4);
+	border-bottom: 1px solid var(--border);
+	animation: view-in var(--dur-med) var(--ease);
+}
+
+.cart-line:last-child {
+	border-bottom: 0;
+}
+
+.cart-line .line-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.cart-line .line-name {
+	font-weight: 600;
+}
+
+.cart-line .line-price {
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+}
+
+/* ============ Tracking ============ */
+.tracking-layout {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: var(--space-6);
+	max-width: 720px;
+}
+
+.order-meta dt {
+	font-size: var(--text-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	color: var(--text-muted);
+	font-weight: 600;
+}
+
+.order-meta dd {
+	margin: 0 0 var(--space-3);
+	font-weight: 500;
+}
+
+/* ============ Dashboard stat tiles ============ */
+.stat-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: var(--space-4);
+	margin-bottom: var(--space-6);
+}
+
+.stat-tile .stat-value {
+	font-size: var(--text-2xl);
+	font-weight: 700;
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.02em;
+}
+
+.stat-tile .stat-label {
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+	margin-top: var(--space-1);
+}
+
+/* ============ Owner menu editor ============ */
+.pending-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-4);
+	background: var(--warning-soft);
+	border: 1px solid var(--warning);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3) var(--space-4);
+	margin-bottom: var(--space-4);
+	flex-wrap: wrap;
+}
+
+.dish-state-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: var(--radius-pill);
+	display: inline-block;
+}
+
+/* ============ Login views ============ */
+.login-wrap {
+	max-width: 400px;
+	margin: var(--space-16) auto;
+}
+
+.login-wrap .card {
+	display: flex;
+	flex-direction: column;
+}
+
+.login-wrap h1 {
+	margin-bottom: var(--space-2);
+}
+
+.login-wrap .role-note {
+	font-size: var(--text-sm);
+	color: var(--text-muted);
+	margin-bottom: var(--space-6);
+}
+
+/* ============ Delivery cards ============ */
+.delivery-card .addresses {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--space-4);
+	margin-top: var(--space-3);
+	font-size: var(--text-sm);
+}
+
+.delivery-card .addresses .addr-label {
+	font-size: var(--text-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	color: var(--text-muted);
+	font-weight: 600;
+	margin-bottom: var(--space-1);
+}
+
+.delivery-card .addresses .addr-restaurant {
+	font-weight: 700;
+	color: var(--text);
+	margin-bottom: var(--space-1);
+}
+
+.page-header .addr-restaurant {
+	font-weight: 700;
+	color: var(--accent);
+	margin-top: var(--space-2);
+}
+
+@media (max-width: 640px) {
+	.delivery-card .addresses {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ============ Section spacing ============ */
+.section {
+	margin-bottom: var(--space-8);
+}
+
+.section > h2 {
+	margin-bottom: var(--space-4);
+}
+
+.stack {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+
+.cluster {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.split {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--space-4);
+	flex-wrap: wrap;
+}
+
+/* ============ Mobile nav ============ */
+@media (max-width: 768px) {
+	.app-nav .container {
+		gap: var(--space-3);
+	}
+
+	.nav-links a {
+		padding: var(--space-2);
+	}
+}
